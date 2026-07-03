@@ -1,0 +1,23 @@
+{
+  "_note": "DEMO DATA ONLY. These are fictional placeholder companies/people so the pipeline is runnable end-to-end without live connectors or API keys. Replace src/lib/pipeline/companyUniverse.ts and nameDiscovery.ts with real registry/API calls before using this for actual outreach.",
+  "companies": [
+    { "id": "au-1", "name": "Southern Cross Analytics", "country": "AU", "registryId": "ABN-DEMO-001", "source": "seed:demo" },
+    { "id": "au-2", "name": "Harbourline Logistics", "country": "AU", "registryId": "ABN-DEMO-002", "source": "seed:demo" },
+    { "id": "de-1", "name": "Nordkern Systeme GmbH", "country": "DE", "registryId": "HRB-DEMO-101", "source": "seed:demo" },
+    { "id": "de-2", "name": "Blaufeld Robotik GmbH", "country": "DE", "registryId": "HRB-DEMO-102", "source": "seed:demo" },
+    { "id": "us-1", "name": "Redline Cloud Corp", "country": "US", "registryId": "EIN-DEMO-201", "source": "seed:demo" },
+    { "id": "us-2", "name": "Ferrous Health Inc", "country": "US", "registryId": "EIN-DEMO-202", "source": "seed:demo" },
+    { "id": "ca-1", "name": "Boreal Data Collective", "country": "CA", "registryId": "CBN-DEMO-301", "source": "seed:demo" },
+    { "id": "ca-2", "name": "Northline Fintech Ltd", "country": "CA", "registryId": "CBN-DEMO-302", "source": "seed:demo" }
+  ],
+  "leadership": {
+    "au-1": { "name": "Jordan Prescott", "title": "CEO", "discoverySource": "company /about page (demo)" },
+    "au-2": { "name": "Isla Rutherford", "title": "Founder & CEO", "discoverySource": "press release (demo)" },
+    "de-1": { "name": "Anke Vogel", "title": "Geschäftsführerin (CEO)", "discoverySource": "Unternehmensregister filing (demo)" },
+    "de-2": { "name": "Tobias Reinhardt", "title": "CEO", "discoverySource": "company /ueber-uns page (demo)" },
+    "us-1": { "name": "Marcus Whitfield", "title": "CEO", "discoverySource": "SEC filing (demo)" },
+    "us-2": { "name": "Priya Anand", "title": "Founder & CEO", "discoverySource": "press release (demo)" },
+    "ca-1": { "name": "Camille Fortin", "title": "CEO", "discoverySource": "company /about page (demo)" },
+    "ca-2": { "name": "Owen MacAllister", "title": "Founder & CEO", "discoverySource": "Corporations Canada filing (demo)" }
+  }
+}
