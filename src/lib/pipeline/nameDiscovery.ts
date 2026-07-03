@@ -62,8 +62,12 @@ export async function discoverNames(companies: Company[]): Promise<{
         stage: "name_discovery",
       });
       log.push(`[${company.name}] no live connector — using demo leadership record (${seeded.discoverySource})`);
-    } else {
+    } else if (company.source.startsWith("seed:")) {
       log.push(`[${company.name}] no leader found (live or demo) — skipped`);
+    } else {
+      log.push(
+        `[${company.name}] real company from ${company.source} — leadership discovery not wired for this source yet (see TODO in nameDiscovery.ts), skipped`
+      );
     }
   }
 

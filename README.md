@@ -15,9 +15,9 @@ Scraping LinkedIn violates its Terms of Service and has lost in court for scrape
 
 | # | Stage | Type | Status |
 |---|-------|------|--------|
-| 1 | Company universe | Data source | Demo data — swap in OpenCorporates/SEC EDGAR/ABR/Corporations Canada |
-| 2 | Domain resolution | Heuristic + DNS | **Live** (real DNS lookups) |
-| 3 | Name discovery | Data source | Demo data — swap in real page-scraping of target's own site |
+| 1 | Company universe | Data source | **Live for US** (SEC EDGAR, no key). AU/DE/CA still demo data — swap in ABR/Unternehmensregister/Corporations Canada |
+| 2 | Domain resolution | Heuristic + DNS | **Live** (real DNS lookups; uses SEC's registered website when available) |
+| 3 | Name discovery | Data source | Demo data — swap in real page-scraping of target's own site (see TODO for wiring SEC-sourced companies too) |
 | — | **Consent gate** | Logic | **Live** (real per-jurisdiction rules, see `consentGate.ts`) |
 | 4 | Email pattern inference | Logic | **Live** |
 | 5 | Verification | DNS | **Live** (real MX lookups) |

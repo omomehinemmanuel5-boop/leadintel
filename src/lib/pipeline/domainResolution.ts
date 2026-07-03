@@ -49,6 +49,17 @@ export async function resolveDomains(companies: Company[]): Promise<{
   const out: Company[] = [];
 
   for (const company of companies) {
+    if (company.domain) {
+      // Already has a real domain from its source (e.g. SEC EDGAR) —
+      // just confirm it resolves, don't overwrite it with a guess.
+      const resolves = await verifyDomainResolves(company.domain);
+      out.push(company);
+      log.push(
+        `[${company.name}] using registry-provided domain ${company.domain}${resolves ? " (DNS confirmed)" : " (DNS check failed — may still be valid, some domains block certain lookups)"}`
+      );
+      continue;
+    }
+
     const slug = slugify(company.name);
     const tld = TLD_BY_COUNTRY[company.country] ?? "com";
     const guess = `${slug}.${tld}`;
