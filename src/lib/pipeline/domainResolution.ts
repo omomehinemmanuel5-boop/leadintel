@@ -28,52 +28,57 @@ function slugify(name: string): string {
     .trim();
 }
 
+async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([promise, new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))]);
+}
+
 async function verifyDomainResolves(domain: string): Promise<boolean> {
-  try {
-    const dns = await import("dns/promises");
-    const records = await dns.resolveMx(domain).catch(() => null);
-    if (records && records.length > 0) return true;
-    // fall back to A record if no MX (some sites route mail elsewhere)
-    const a = await dns.resolve4(domain).catch(() => null);
-    return !!(a && a.length > 0);
-  } catch {
-    return false;
-  }
+  return withTimeout(
+    (async () => {
+      try {
+        const dns = await import("dns/promises");
+        const records = await dns.resolveMx(domain).catch(() => null);
+        if (records && records.length > 0) return true;
+        const a = await dns.resolve4(domain).catch(() => null);
+        return !!(a && a.length > 0);
+      } catch {
+        return false;
+      }
+    })(),
+    3000,
+    false
+  );
 }
 
 export async function resolveDomains(companies: Company[]): Promise<{
   companies: Company[];
   log: string[];
 }> {
-  const log: string[] = [];
-  const out: Company[] = [];
+  const results = await Promise.all(
+    companies.map(async (company) => {
+      if (company.domain) {
+        const resolves = await verifyDomainResolves(company.domain);
+        return {
+          company,
+          log: `[${company.name}] using registry-provided domain ${company.domain}${resolves ? " (DNS confirmed)" : " (DNS check failed — may still be valid, some domains block certain lookups)"}`,
+        };
+      }
 
-  for (const company of companies) {
-    if (company.domain) {
-      // Already has a real domain from its source (e.g. SEC EDGAR) —
-      // just confirm it resolves, don't overwrite it with a guess.
-      const resolves = await verifyDomainResolves(company.domain);
-      out.push(company);
-      log.push(
-        `[${company.name}] using registry-provided domain ${company.domain}${resolves ? " (DNS confirmed)" : " (DNS check failed — may still be valid, some domains block certain lookups)"}`
-      );
-      continue;
-    }
+      const slug = slugify(company.name);
+      const tld = TLD_BY_COUNTRY[company.country] ?? "com";
+      const guess = `${slug}.${tld}`;
+      const resolves = await verifyDomainResolves(guess);
 
-    const slug = slugify(company.name);
-    const tld = TLD_BY_COUNTRY[company.country] ?? "com";
-    const guess = `${slug}.${tld}`;
-
-    const resolves = await verifyDomainResolves(guess);
-    if (resolves) {
-      out.push({ ...company, domain: guess });
-      log.push(`[${company.name}] resolved -> ${guess} (heuristic + DNS confirmed)`);
-    } else {
+      if (resolves) {
+        return { company: { ...company, domain: guess }, log: `[${company.name}] resolved -> ${guess} (heuristic + DNS confirmed)` };
+      }
       // TODO: fall back to a search-based lookup here if you add a key later
-      out.push({ ...company, domain: undefined });
-      log.push(`[${company.name}] heuristic guess "${guess}" did not resolve — needs manual/search fallback`);
-    }
-  }
+      return {
+        company: { ...company, domain: undefined },
+        log: `[${company.name}] heuristic guess "${guess}" did not resolve — needs manual/search fallback`,
+      };
+    })
+  );
 
-  return { companies: out, log };
+  return { companies: results.map((r) => r.company), log: results.map((r) => r.log) };
 }

@@ -1,23 +1,78 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 :root {
-  --bg: #0d1117;
-  --panel: #131a24;
-  --panel-2: #182030;
-  --line: #232c3a;
-  --text: #e8ecf1;
-  --muted: #8b96a8;
-  --accent: #4fd1c5;
-  --accent-dim: #285a56;
-  --warn: #e0a458;
-  --danger: #e05252;
-  --danger-dim: #3a1f1f;
+  /* Glass Intelligence — dark-first design language */
+  --void: #05070a;
+  --deep: #090d13;
+  --surface: #0d1219;
+
+  --glass: rgba(255, 255, 255, 0.035);
+  --glass-strong: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --glass-border-strong: rgba(255, 255, 255, 0.15);
+
+  --ink: #eef1f6;
+  --ink-dim: #8791a3;
+  --ink-faint: #545e70;
+
+  --teal: #4fd1c5;
+  --teal-dim: rgba(79, 209, 197, 0.14);
+  --teal-border: rgba(79, 209, 197, 0.35);
+
+  --violet: #9b8cfb;
+  --violet-dim: rgba(155, 140, 251, 0.14);
+  --violet-border: rgba(155, 140, 251, 0.35);
+
+  --amber: #e0a458;
+  --amber-dim: rgba(224, 164, 88, 0.12);
+  --amber-border: rgba(224, 164, 88, 0.35);
+
+  --red: #ef6a6a;
+  --red-dim: rgba(239, 106, 106, 0.12);
+  --red-border: rgba(239, 106, 106, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
 }
 
 body {
-  background: var(--bg);
-  color: var(--text);
+  background: var(--void);
+  color: var(--ink);
+  font-family: 'Inter', 'Space Grotesk', sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Ambient mesh backdrop — signature "Glass Intelligence" atmosphere */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 900px 600px at 15% -10%, rgba(79, 209, 197, 0.10), transparent 60%),
+    radial-gradient(ellipse 800px 700px at 90% 10%, rgba(155, 140, 251, 0.08), transparent 55%),
+    radial-gradient(ellipse 700px 500px at 50% 110%, rgba(79, 209, 197, 0.05), transparent 60%);
+  animation: drift 30s ease-in-out infinite alternate;
+}
+
+@keyframes drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  100% { transform: translate3d(-1.5%, 1.5%, 0) scale(1.03); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before { animation: none; }
+}
+
+.font-display {
   font-family: 'Space Grotesk', sans-serif;
 }
 
@@ -25,4 +80,59 @@ body {
   font-family: 'IBM Plex Mono', monospace;
 }
 
+/* Glass panel primitive */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
 
+.glass-strong {
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border-strong);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.glass-hover {
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.glass-hover:hover {
+  background: var(--glass-strong);
+  border-color: var(--glass-border-strong);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--glass-border-strong);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Command palette backdrop */
+.cmdk-overlay {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.18s ease-out;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}

@@ -8,8 +8,10 @@ import { inferEmailPatterns } from "@/lib/pipeline/emailPattern";
 import { verifyContacts } from "@/lib/pipeline/verification";
 import { runSuppressionGate } from "@/lib/pipeline/suppressionGate";
 import { buildOutreachQueue } from "@/lib/pipeline/outreachQueue";
+import { saveRun } from "@/lib/store";
 
 export const runtime = "nodejs";
+export const maxDuration = 30;
 
 function emptyStage(stage: StageId) {
   return {
@@ -26,6 +28,7 @@ function emptyStage(stage: StageId) {
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const countries: Country[] = body.countries?.length ? body.countries : ["AU", "DE", "US", "CA"];
+  const label: string | undefined = body.label;
 
   const stages: PipelineRun["stages"] = Object.fromEntries(
     STAGE_ORDER.map((s) => [s, emptyStage(s)])
@@ -76,13 +79,17 @@ export async function POST(req: NextRequest) {
   const { queue, log: log8, excluded } = buildOutreachQueue(suppressionChecked);
   finish("outreach_queue", suppressionChecked.length, queue.length, excluded, log8);
 
-  const run: PipelineRun = {
+  const run: PipelineRun & { label?: string } = {
     id: `run_${Date.now()}`,
     createdAt: new Date().toISOString(),
     countries,
     stages,
     contacts: suppressionChecked,
+    companies,
+    label,
   };
+
+  saveRun(run);
 
   return NextResponse.json({ run, queue });
 }

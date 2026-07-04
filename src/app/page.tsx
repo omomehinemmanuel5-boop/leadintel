@@ -1,202 +1,180 @@
 "use client";
 
-import { useState } from "react";
-import { Country, PipelineRun, STAGE_LABELS, STAGE_ORDER, GATE_STAGES } from "@/lib/types";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { PageHeader, StatCard, Badge, EmptyState } from "@/components/ui";
+import { Building2, Users, ShieldCheck, Send, Search, ArrowRight, Plus } from "lucide-react";
 
-const COUNTRIES: { code: Country; label: string; flag: string }[] = [
-  { code: "AU", label: "Australia", flag: "🇦🇺" },
-  { code: "DE", label: "Germany", flag: "🇩🇪" },
-  { code: "US", label: "United States", flag: "🇺🇸" },
-  { code: "CA", label: "Canada", flag: "🇨🇦" },
-];
+interface Analytics {
+  totalRuns: number;
+  totalCompanies: number;
+  totalContacts: number;
+  verified: number;
+  suppressed: number;
+  queueEligible: number;
+  byCountry: Record<string, number>;
+  byConsent: Record<string, number>;
+}
 
-export default function Home() {
-  const [selected, setSelected] = useState<Country[]>(["AU", "DE", "US", "CA"]);
-  const [running, setRunning] = useState(false);
-  const [run, setRun] = useState<PipelineRun | null>(null);
-  const [openStage, setOpenStage] = useState<string | null>(null);
+interface JobSummary {
+  id: string;
+  createdAt: string;
+  countries: string[];
+  label?: string;
+  companyCount: number;
+  contactCount: number;
+  verifiedCount: number;
+}
 
-  function toggleCountry(code: Country) {
-    setSelected((prev) =>
-      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
-    );
-  }
+const FLAGS: Record<string, string> = { AU: "🇦🇺", DE: "🇩🇪", US: "🇺🇸", CA: "🇨🇦" };
 
-  async function runPipeline() {
-    setRunning(true);
-    setRun(null);
-    try {
-      const res = await fetch("/api/pipeline/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ countries: selected }),
-      });
-      const data = await res.json();
-      setRun(data.run);
-    } finally {
-      setRunning(false);
-    }
-  }
+export default function Dashboard() {
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [jobs, setJobs] = useState<JobSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/analytics").then((r) => r.json()),
+      fetch("/api/jobs").then((r) => r.json()),
+    ]).then(([a, j]) => {
+      setAnalytics(a);
+      setJobs(j.runs.slice(0, 6));
+      setLoading(false);
+    });
+  }, []);
 
   return (
-    <div className="max-w-4xl mx-auto px-5 py-8 w-full">
-      <header className="mb-8">
-        <div className="mono text-[11px] tracking-[0.14em] uppercase text-[var(--accent)] mb-2">
-          leadintel — demo mode
-        </div>
-        <h1 className="text-2xl font-bold mb-2">Executive contact enrichment pipeline</h1>
-        <p className="text-sm text-[var(--muted)] leading-relaxed max-w-xl">
-          Runs entirely on public registries and demo data — no paid API keys, no LinkedIn.
-          Every contact passes through a consent gate and a suppression gate before it can
-          reach an outreach queue.
-        </p>
-        <div className="mt-4 border border-[var(--danger-dim)] bg-[rgba(224,82,82,0.06)] rounded-lg px-4 py-3 text-[13px] text-[#e8b4b4] leading-relaxed">
-          <b className="text-[var(--danger)]">Demo data notice:</b> the company universe and
-          name-discovery stages ship with fictional seed data (
-          <code className="mono">data/seed-companies.json</code>) so the pipeline is runnable
-          out of the box. Swap in real registry connectors before using this for actual outreach —
-          see comments in <code className="mono">src/lib/pipeline/</code>.
-        </div>
-      </header>
+    <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8">
+      <PageHeader
+        eyebrow="Overview"
+        title="Dashboard"
+        description="A live view across every search job — companies discovered, contacts cleared for outreach, and where the pipeline drew the line."
+        action={
+          <Link
+            href="/jobs"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--teal)] text-[#05201d] font-semibold text-sm shrink-0 hover:brightness-110 transition"
+          >
+            <Plus size={15} />
+            New search job
+          </Link>
+        }
+      />
 
-      <section className="mb-8">
-        <div className="mono text-[11px] tracking-[0.1em] uppercase text-[var(--muted)] mb-3">
-          Countries
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {COUNTRIES.map((c) => (
-            <button
-              key={c.code}
-              onClick={() => toggleCountry(c.code)}
-              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                selected.includes(c.code)
-                  ? "border-[var(--accent)] bg-[var(--accent-dim)] text-[var(--accent)]"
-                  : "border-[var(--line)] bg-[var(--panel)] text-[var(--muted)]"
-              }`}
+      {!loading && analytics && analytics.totalRuns === 0 ? (
+        <EmptyState
+          icon={Search}
+          title="No search jobs yet"
+          description="Run your first search job to see companies, contacts, and consent status populate here."
+          action={
+            <Link
+              href="/jobs"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--teal)] text-[#05201d] text-xs font-semibold"
             >
-              <span>{c.flag}</span>
-              {c.label}
-            </button>
-          ))}
-        </div>
-
-        <button
-          onClick={runPipeline}
-          disabled={running || selected.length === 0}
-          className="mt-5 w-full sm:w-auto px-5 py-2.5 rounded-lg bg-[var(--accent)] text-[#06201d] font-semibold text-sm disabled:opacity-40 transition-opacity"
-        >
-          {running ? "Running pipeline…" : "Run pipeline"}
-        </button>
-      </section>
-
-      {run && (
+              Launch a search job <ArrowRight size={13} />
+            </Link>
+          }
+        />
+      ) : (
         <>
-          <section className="mb-10">
-            <div className="mono text-[11px] tracking-[0.1em] uppercase text-[var(--muted)] mb-3">
-              Stages
-            </div>
-            <div className="flex flex-col gap-0">
-              {STAGE_ORDER.map((stageId, i) => {
-                const stage = run.stages[stageId];
-                const isGate = GATE_STAGES.includes(stageId);
-                const isOpen = openStage === stageId;
-                return (
-                  <div key={stageId}>
-                    {i > 0 && <div className="w-px h-5 bg-[var(--line)] ml-6" />}
-                    <div
-                      onClick={() => setOpenStage(isOpen ? null : stageId)}
-                      className={`rounded-xl border px-4 py-3.5 cursor-pointer transition-colors ${
-                        isGate
-                          ? "border-[var(--warn)] bg-[rgba(224,164,88,0.06)]"
-                          : "border-[var(--line)] bg-[var(--panel)]"
-                      } ${isOpen ? "bg-[var(--panel-2)]" : ""}`}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <div className="text-sm font-semibold">{STAGE_LABELS[stageId]}</div>
-                          <div className="mono text-[10.5px] text-[var(--muted)] mt-0.5">
-                            in: {stage.input} · out: {stage.output}
-                            {stage.blocked > 0 ? ` · blocked: ${stage.blocked}` : ""}
-                          </div>
-                        </div>
-                        <span
-                          className={`mono text-[10px] px-2 py-1 rounded-full border ${
-                            stage.status === "done"
-                              ? "border-[var(--accent-dim)] text-[var(--accent)]"
-                              : "border-[var(--line)] text-[var(--muted)]"
-                          }`}
-                        >
-                          {stage.status}
-                        </span>
-                      </div>
-                      {isOpen && (
-                        <div className="mt-3 pt-3 border-t border-[var(--line)] text-[12.5px] text-[#c3cbd6] leading-relaxed space-y-1">
-                          {stage.log.map((line, idx) => (
-                            <div key={idx} className="mono text-[11.5px]">
-                              {line}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+            <StatCard
+              icon={Building2}
+              label="Companies discovered"
+              value={analytics?.totalCompanies ?? "—"}
+              accent="teal"
+            />
+            <StatCard
+              icon={Users}
+              label="Contacts found"
+              value={analytics?.totalContacts ?? "—"}
+              accent="violet"
+            />
+            <StatCard
+              icon={ShieldCheck}
+              label="Verified emails"
+              value={analytics?.verified ?? "—"}
+              accent="teal"
+              hint="MX-confirmed, not just guessed"
+            />
+            <StatCard
+              icon={Send}
+              label="Queue-eligible"
+              value={analytics?.queueEligible ?? "—"}
+              accent="amber"
+              hint="Cleared both compliance gates"
+            />
+          </div>
 
-          <section>
-            <div className="mono text-[11px] tracking-[0.1em] uppercase text-[var(--muted)] mb-3">
-              Contacts ({run.contacts.length})
+          <div className="grid lg:grid-cols-5 gap-5">
+            <div className="lg:col-span-3">
+              <div className="flex items-center justify-between mb-3">
+                <div className="mono text-[11px] tracking-[0.1em] uppercase text-[var(--ink-dim)]">
+                  Recent search jobs
+                </div>
+                <Link href="/jobs" className="text-xs text-[var(--teal)] flex items-center gap-1">
+                  View all <ArrowRight size={12} />
+                </Link>
+              </div>
+              <div className="space-y-2">
+                {jobs.map((job) => (
+                  <Link
+                    key={job.id}
+                    href={`/jobs/${job.id}`}
+                    className="glass glass-hover rounded-xl px-4 py-3 flex items-center justify-between gap-3 block"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">
+                        {job.label || `Search job · ${job.countries.join(", ")}`}
+                      </div>
+                      <div className="text-[11px] text-[var(--ink-dim)] mt-0.5">
+                        {new Date(job.createdAt).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {job.countries.map((c) => (
+                        <span key={c}>{FLAGS[c]}</span>
+                      ))}
+                      <Badge tone="teal">{job.contactCount} contacts</Badge>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </div>
-            <div className="overflow-x-auto rounded-xl border border-[var(--line)]">
-              <table className="w-full text-[12.5px]">
-                <thead>
-                  <tr className="text-left text-[var(--muted)] mono text-[10.5px] uppercase tracking-wide border-b border-[var(--line)]">
-                    <th className="px-3 py-2">Name</th>
-                    <th className="px-3 py-2">Country</th>
-                    <th className="px-3 py-2">Email (guess)</th>
-                    <th className="px-3 py-2">Consent</th>
-                    <th className="px-3 py-2">Verified</th>
-                    <th className="px-3 py-2">Suppressed</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {run.contacts.map((c) => (
-                    <tr key={c.id} className="border-b border-[var(--line)] last:border-0">
-                      <td className="px-3 py-2">
-                        {c.name}
-                        <div className="text-[var(--muted)] text-[11px]">{c.title}</div>
-                      </td>
-                      <td className="px-3 py-2">{c.country}</td>
-                      <td className="px-3 py-2 mono text-[11.5px]">{c.email ?? "—"}</td>
-                      <td className="px-3 py-2">
-                        <span
-                          className={`mono text-[10px] px-2 py-0.5 rounded-full border ${
-                            c.consentBasis === "requires_optin" || c.consentBasis === "blocked"
-                              ? "border-[var(--danger)] text-[var(--danger)]"
-                              : "border-[var(--accent-dim)] text-[var(--accent)]"
-                          }`}
-                        >
-                          {c.consentBasis ?? "pending"}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2">{c.verified ? "✅" : "—"}</td>
-                      <td className="px-3 py-2">{c.suppressed ? "🚫" : "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+
+            <div className="lg:col-span-2">
+              <div className="mono text-[11px] tracking-[0.1em] uppercase text-[var(--ink-dim)] mb-3">
+                Contacts by country
+              </div>
+              <div className="glass rounded-2xl p-4 space-y-3">
+                {analytics &&
+                  Object.entries(analytics.byCountry).map(([country, count]) => {
+                    const max = Math.max(...Object.values(analytics.byCountry), 1);
+                    return (
+                      <div key={country}>
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span>
+                            {FLAGS[country]} {country}
+                          </span>
+                          <span className="mono text-[var(--ink-dim)]">{count}</span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-[var(--glass-strong)] overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-[var(--teal)] to-[var(--violet)]"
+                            style={{ width: `${(count / max) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                {analytics && Object.keys(analytics.byCountry).length === 0 && (
+                  <div className="text-xs text-[var(--ink-faint)] text-center py-4">No data yet</div>
+                )}
+              </div>
             </div>
-          </section>
+          </div>
         </>
       )}
-
-      <footer className="mt-12 pt-5 border-t border-[var(--line)] text-[12px] text-[var(--muted)] leading-relaxed">
-        Built for zero paid API keys. Free-tier connectors are stubbed with clear TODOs in{" "}
-        <code className="mono">src/lib/pipeline/</code> — swap in real registry calls one stage
-        at a time and keep them under their documented rate limits.
-      </footer>
     </div>
   );
 }

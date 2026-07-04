@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import AppShell from "@/components/AppShell";
 
 export const metadata: Metadata = {
-  title: "leadintel — compliant executive outreach pipeline",
+  title: "LeadIntel — AI-first B2B intelligence",
   description:
-    "A production-shaped, keyless pipeline for finding and verifying B2B executive contacts across AU, DE, US and CA, with consent and suppression gates built in.",
+    "Company discovery, research, and consent-safe contact enrichment across AU, DE, US and CA — built entirely on public data sources.",
 };
 
 export default function RootLayout({
@@ -14,7 +15,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full">
+        <AppShell>{children}</AppShell>
+      </body>
     </html>
   );
 }

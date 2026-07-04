@@ -1,0 +1,125 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { PageHeader, Badge, EmptyState } from "@/components/ui";
+import { Building2, ExternalLink } from "lucide-react";
+
+interface Company {
+  id: string;
+  name: string;
+  country: string;
+  domain?: string;
+  registryId?: string;
+  source: string;
+  runId: string;
+}
+
+const FLAGS: Record<string, string> = { AU: "🇦🇺", DE: "🇩🇪", US: "🇺🇸", CA: "🇨🇦" };
+
+export default function CompaniesPage() {
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [filter, setFilter] = useState<string>("ALL");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/companies")
+      .then((r) => r.json())
+      .then((d) => {
+        setCompanies(d.companies);
+        setLoading(false);
+      });
+  }, []);
+
+  const countries = Array.from(new Set(companies.map((c) => c.country)));
+  const visible = filter === "ALL" ? companies : companies.filter((c) => c.country === filter);
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8">
+      <PageHeader
+        eyebrow={`${companies.length} discovered`}
+        title="Companies"
+        description="Every company surfaced across your search jobs, deduplicated, with its source registry."
+      />
+
+      {!loading && companies.length === 0 ? (
+        <EmptyState
+          icon={Building2}
+          title="No companies yet"
+          description="Run a search job to populate this view."
+        />
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-2 mb-5">
+            <button
+              onClick={() => setFilter("ALL")}
+              className={`px-3 py-1.5 rounded-full text-xs border ${
+                filter === "ALL"
+                  ? "border-[var(--teal-border)] bg-[var(--teal-dim)] text-[var(--teal)]"
+                  : "border-[var(--glass-border)] text-[var(--ink-dim)]"
+              }`}
+            >
+              All
+            </button>
+            {countries.map((c) => (
+              <button
+                key={c}
+                onClick={() => setFilter(c)}
+                className={`px-3 py-1.5 rounded-full text-xs border flex items-center gap-1.5 ${
+                  filter === c
+                    ? "border-[var(--teal-border)] bg-[var(--teal-dim)] text-[var(--teal)]"
+                    : "border-[var(--glass-border)] text-[var(--ink-dim)]"
+                }`}
+              >
+                {FLAGS[c]} {c}
+              </button>
+            ))}
+          </div>
+
+          <div className="overflow-x-auto rounded-xl glass">
+            <table className="w-full text-[12.5px]">
+              <thead>
+                <tr className="text-left text-[var(--ink-dim)] mono text-[10.5px] uppercase tracking-wide border-b border-[var(--glass-border)]">
+                  <th className="px-3 py-2.5">Company</th>
+                  <th className="px-3 py-2.5">Country</th>
+                  <th className="px-3 py-2.5">Domain</th>
+                  <th className="px-3 py-2.5">Registry ID</th>
+                  <th className="px-3 py-2.5">Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((c) => (
+                  <tr key={c.id} className="border-b border-[var(--glass-border)] last:border-0">
+                    <td className="px-3 py-2.5 font-medium">{c.name}</td>
+                    <td className="px-3 py-2.5">{FLAGS[c.country]} {c.country}</td>
+                    <td className="px-3 py-2.5 mono text-[11.5px]">
+                      {c.domain ? (
+                        <a
+                          href={`https://${c.domain}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1 text-[var(--teal)] hover:underline"
+                        >
+                          {c.domain} <ExternalLink size={10} />
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 mono text-[11px] text-[var(--ink-dim)]">
+                      {c.registryId ?? "—"}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <Badge tone={c.source.includes("seed") ? "amber" : "teal"}>
+                        {c.source.includes("seed") ? "demo data" : "live"}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

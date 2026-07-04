@@ -62,6 +62,7 @@ export interface PipelineRun {
   countries: Country[];
   stages: Record<StageId, StageResult>;
   contacts: Contact[];
+  companies?: Company[];
 }
 
 export const STAGE_ORDER: StageId[] = [

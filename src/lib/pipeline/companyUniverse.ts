@@ -24,9 +24,10 @@ const SEC_USER_AGENT = "leadintel research@aureonics.systems";
 const SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json";
 
 // How many US companies to pull per run. The full file has 10,000+
-// entries — capped here to keep runs fast and stay well under SEC's
-// documented rate limit (10 req/sec), since we only make one call anyway.
-const US_COMPANY_LIMIT = 15;
+// entries — capped here to keep runs comfortably inside Vercel's default
+// serverless function timeout (10s on Hobby), since each company needs a
+// follow-up website lookup.
+const US_COMPANY_LIMIT = 10;
 
 interface SecTickerEntry {
   cik_str: number;
@@ -37,9 +38,13 @@ interface SecTickerEntry {
 async function fetchSecWebsite(cik: number): Promise<string | undefined> {
   try {
     const paddedCik = String(cik).padStart(10, "0");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
     const res = await fetch(`https://data.sec.gov/submissions/CIK${paddedCik}.json`, {
       headers: { "User-Agent": SEC_USER_AGENT },
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
     if (!res.ok) return undefined;
     const data = await res.json();
     const website: string | undefined = data.website || undefined;
@@ -60,23 +65,19 @@ async function fetchUSCompaniesFromSEC(): Promise<Company[] | null> {
     const data = (await res.json()) as Record<string, SecTickerEntry>;
     const entries = Object.values(data).slice(0, US_COMPANY_LIMIT);
 
-    const companies: Company[] = [];
-    for (const entry of entries) {
-      // Second call per company for the real registered website —
-      // sequential and capped low (US_COMPANY_LIMIT) to stay well under
-      // SEC's 10 req/sec limit without needing a delay/queue for a
-      // 15-company demo run.
-      const domain = await fetchSecWebsite(entry.cik_str);
-      companies.push({
-        id: `us-sec-${entry.cik_str}`,
-        name: entry.title,
-        country: "US" as Country,
-        registryId: `CIK-${String(entry.cik_str).padStart(10, "0")}`,
-        source: "SEC EDGAR company_tickers.json",
-        domain,
-      });
-    }
-    return companies;
+    // Fetch all website lookups in parallel — sequential awaits here
+    // risk exceeding Vercel's default 10s serverless timeout once you
+    // add DNS resolution for every other country on top.
+    const websites = await Promise.all(entries.map((e) => fetchSecWebsite(e.cik_str)));
+
+    return entries.map((entry, i) => ({
+      id: `us-sec-${entry.cik_str}`,
+      name: entry.title,
+      country: "US" as Country,
+      registryId: `CIK-${String(entry.cik_str).padStart(10, "0")}`,
+      source: "SEC EDGAR company_tickers.json",
+      domain: websites[i],
+    }));
   } catch {
     return null;
   }
