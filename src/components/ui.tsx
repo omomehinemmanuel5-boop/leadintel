@@ -91,7 +91,7 @@ export function Badge({
   tone = "neutral",
 }: {
   children: React.ReactNode;
-  tone?: "neutral" | "teal" | "amber" | "red" | "violet";
+  tone?: "neutral" | "teal" | "amber" | "red" | "violet" | "blue";
 }) {
   const styles: Record<string, string> = {
     neutral: "border-[var(--glass-border)] text-[var(--ink-dim)]",
@@ -99,6 +99,7 @@ export function Badge({
     amber: "border-[var(--amber-border)] text-[var(--amber)] bg-[var(--amber-dim)]",
     red: "border-[var(--red-border)] text-[var(--red)] bg-[var(--red-dim)]",
     violet: "border-[var(--violet-border)] text-[var(--violet)] bg-[var(--violet-dim)]",
+    blue: "border-[var(--blue-border)] text-[var(--blue)] bg-[var(--blue-dim)]",
   };
   return (
     <span className={`mono text-[10px] px-2 py-0.5 rounded-full border whitespace-nowrap ${styles[tone]}`}>

@@ -9,6 +9,7 @@ function makeCompany(overrides: Partial<Company> = {}): Company {
     name: "Example Co",
     country: "US",
     source: "test",
+    provider: "demo",
     domain: "example.com",
     ...overrides,
   };
@@ -22,6 +23,7 @@ function makeContact(overrides: Partial<Contact> = {}): Contact {
     title: "CEO",
     country: "US",
     discoverySource: "test",
+    provider: "demo",
     stage: "name_discovery",
     ...overrides,
   };
@@ -32,6 +34,16 @@ describe("inferEmailPatterns", () => {
     const { contacts } = inferEmailPatterns([makeContact()], [makeCompany()]);
     expect(contacts[0].email).toBe("jordan.prescott@example.com");
     expect(contacts[0].emailPattern).toBe("first.last");
+    expect(contacts[0].emailSource).toBe("inferred");
+  });
+
+  it("does not overwrite an email already supplied by Apollo", () => {
+    const { contacts } = inferEmailPatterns(
+      [makeContact({ email: "real@apollo-match.com", emailSource: "apollo" })],
+      [makeCompany()]
+    );
+    expect(contacts[0].email).toBe("real@apollo-match.com");
+    expect(contacts[0].emailPattern).toBeUndefined();
   });
 
   it("skips contacts whose company has no resolved domain", () => {

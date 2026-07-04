@@ -42,6 +42,11 @@ export function inferEmailPatterns(contacts: Contact[], companies: Company[]): {
   const domainByCompany = new Map(companies.map((c) => [c.id, c.domain]));
 
   const out = contacts.map((contact) => {
+    if (contact.email && contact.emailSource === "apollo") {
+      log.push(`[${contact.name}] already has an email from Apollo — skipping pattern guess`);
+      return { ...contact, stage: "email_pattern" as const };
+    }
+
     const domain = domainByCompany.get(contact.companyId);
     if (!domain) {
       log.push(`[${contact.name}] no domain resolved — skipping pattern inference`);
@@ -59,6 +64,7 @@ export function inferEmailPatterns(contacts: Contact[], companies: Company[]): {
     return {
       ...contact,
       email: best.email,
+      emailSource: "inferred" as const,
       emailPattern: best.pattern,
       emailConfidence: best.confidence,
       stage: "email_pattern" as const,

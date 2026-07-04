@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { PageHeader, Badge } from "@/components/ui";
+import { providerBadge } from "@/lib/providerBadge";
 import { ArrowLeft } from "lucide-react";
 
 const STAGE_ORDER = [
@@ -47,6 +48,7 @@ interface Contact {
   consentBasis?: string;
   verified?: boolean;
   suppressed?: boolean;
+  provider: string;
 }
 
 interface Run {
@@ -152,6 +154,7 @@ export default function JobDetailPage() {
             <tr className="text-left text-[var(--ink-dim)] mono text-[10.5px] uppercase tracking-wide border-b border-[var(--glass-border)]">
               <th className="px-3 py-2">Name</th>
               <th className="px-3 py-2">Country</th>
+              <th className="px-3 py-2">Source</th>
               <th className="px-3 py-2">Email (guess)</th>
               <th className="px-3 py-2">Consent</th>
               <th className="px-3 py-2">Verified</th>
@@ -166,6 +169,9 @@ export default function JobDetailPage() {
                   <div className="text-[var(--ink-dim)] text-[11px]">{c.title}</div>
                 </td>
                 <td className="px-3 py-2">{c.country}</td>
+                <td className="px-3 py-2">
+                  <Badge tone={providerBadge(c.provider).tone}>{providerBadge(c.provider).label}</Badge>
+                </td>
                 <td className="px-3 py-2 mono text-[11.5px]">{c.email ?? "—"}</td>
                 <td className="px-3 py-2">
                   <Badge tone={c.consentBasis === "requires_optin" || c.consentBasis === "blocked" ? "red" : "teal"}>

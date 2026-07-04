@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader, Badge, EmptyState, ErrorBanner } from "@/components/ui";
+import { providerBadge } from "@/lib/providerBadge";
 import { Users, Download } from "lucide-react";
 
 interface Contact {
@@ -11,10 +12,12 @@ interface Contact {
   country: string;
   email?: string;
   emailConfidence?: number;
+  emailSource?: string;
   verified?: boolean;
   consentBasis?: string;
   suppressed?: boolean;
   discoverySource: string;
+  provider: string;
 }
 
 const FLAGS: Record<string, string> = { AU: "🇦🇺", DE: "🇩🇪", US: "🇺🇸", CA: "🇨🇦" };
@@ -126,6 +129,7 @@ export default function ContactsPage() {
                 <tr className="text-left text-[var(--ink-dim)] mono text-[10.5px] uppercase tracking-wide border-b border-[var(--glass-border)]">
                   <th className="px-3 py-2.5">Name</th>
                   <th className="px-3 py-2.5">Country</th>
+                  <th className="px-3 py-2.5">Source</th>
                   <th className="px-3 py-2.5">Email</th>
                   <th className="px-3 py-2.5">Consent</th>
                   <th className="px-3 py-2.5">Verified</th>
@@ -140,12 +144,18 @@ export default function ContactsPage() {
                       <div className="text-[var(--ink-dim)] text-[11px]">{c.title}</div>
                     </td>
                     <td className="px-3 py-2.5">{FLAGS[c.country]} {c.country}</td>
+                    <td className="px-3 py-2.5">
+                      <Badge tone={providerBadge(c.provider).tone}>{providerBadge(c.provider).label}</Badge>
+                    </td>
                     <td className="px-3 py-2.5 mono text-[11.5px]">
                       {c.email ?? "—"}
                       {c.emailConfidence !== undefined && (
                         <div className="text-[10px] text-[var(--ink-faint)]">
                           {Math.round(c.emailConfidence * 100)}% pattern confidence
                         </div>
+                      )}
+                      {c.emailSource === "apollo" && (
+                        <div className="text-[10px] text-[var(--violet)]">direct from Apollo</div>
                       )}
                     </td>
                     <td className="px-3 py-2.5">

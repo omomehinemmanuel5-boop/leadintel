@@ -44,6 +44,16 @@ Scraping LinkedIn violates its Terms of Service and has lost in court for scrape
 
 Demo mode ships with fictional seed companies/leaders in `data/seed-companies.json` so the whole thing runs end-to-end out of the box. **Do not use the demo data for real outreach** — it's fictional.
 
+## Data providers — Apollo, Google, and source attribution
+
+Every company and contact carries a `provider` field (`sec_edgar`, `apollo`, `google_search`, `demo`, ...) that flows straight into the UI — the Companies, Contacts, and Job Detail tables all show exactly where each record came from, and the Integrations page shows live configuration status (not just a static list).
+
+**Apollo.io** (`APOLLO_API_KEY`) — real name+email database match. Two real API calls under the hood, not a simplification: a free people-search to find a candidate at a company's domain, then a credit-costing enrichment call to reveal the real name and email. Capped at 5 enrichments per run (`APOLLO_MATCH_LIMIT` in `src/lib/providers/apollo.ts`) since that call costs money. Their cheapest plan with API access is ~$59/mo as of writing — factor that in before turning this on for real volume.
+
+**Google Custom Search** (`GOOGLE_API_KEY` + `GOOGLE_CSE_ID`) — free tier, 100 queries/day. Used for two things, both scoped to a company's own domain, never a third-party platform: a domain-resolution fallback when the DNS heuristic fails, and best-effort leadership-name extraction from a company's own About/Leadership page. This is explicitly lower-confidence than Apollo — it's regex over HTML, not a structured match — and is labeled that way everywhere it surfaces.
+
+**Provider priority in name discovery:** Apollo (if configured) → Google (if configured) → demo seed data. Nothing crashes or silently fakes data if a provider isn't configured — the pipeline log says exactly which stage would benefit from a key you haven't added yet (see `/integrations` in the app, or the stage log in any job's detail page).
+
 ## Persistence — read this before relying on it
 
 Search jobs, companies, and contacts currently live in an in-memory store (`src/lib/store.ts`) scoped to a single warm serverless instance. It resets on redeploy or cold start. This is intentional for the Foundation phase — the shape of every store function is written so swapping in a real database (Volume VI: Infrastructure & Deployment) is a drop-in change, not a rewrite. Vercel Postgres and Supabase both have zero-cost tiers to start with.

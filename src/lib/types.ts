@@ -12,13 +12,16 @@ export type StageId =
 
 export type StageStatus = "idle" | "running" | "done" | "error" | "blocked";
 
+export type Provider = "sec_edgar" | "apollo" | "google_search" | "abr" | "demo" | "manual";
+
 export interface Company {
   id: string;
   name: string;
   country: Country;
   registryId?: string; // e.g. ABN, EIN, HRB number
   domain?: string;
-  source: string; // which registry/source it came from
+  source: string; // human-readable detail, e.g. "SEC EDGAR company_tickers.json"
+  provider: Provider; // canonical id for UI badges/filtering
 }
 
 export type ConsentBasis =
@@ -33,8 +36,10 @@ export interface Contact {
   name: string;
   title: string; // e.g. "CEO", "Founder"
   country: Country;
-  discoverySource: string; // e.g. "company /about page", "press release"
+  discoverySource: string; // human-readable detail, e.g. "company /about page"
+  provider: Provider; // canonical id for UI badges/filtering — who found this person
   email?: string;
+  emailSource?: "inferred" | "apollo"; // was the email guessed, or supplied directly by a provider?
   emailPattern?: string;
   emailConfidence?: number; // 0-1
   verified?: boolean;

@@ -76,6 +76,7 @@ async function fetchUSCompaniesFromSEC(): Promise<Company[] | null> {
       country: "US" as Country,
       registryId: `CIK-${String(entry.cik_str).padStart(10, "0")}`,
       source: "SEC EDGAR company_tickers.json",
+      provider: "sec_edgar" as const,
       domain: websites[i],
     }));
   } catch {
@@ -104,7 +105,11 @@ function loadSeed(): { companies: Company[] } {
   const seedPath = path.join(process.cwd(), "data", "seed-companies.json");
   const raw = fs.readFileSync(seedPath, "utf-8");
   const parsed = JSON.parse(raw);
-  return { companies: parsed.companies as Company[] };
+  const companies = (parsed.companies as Omit<Company, "provider">[]).map((c) => ({
+    ...c,
+    provider: "demo" as const,
+  }));
+  return { companies };
 }
 
 export async function getCompanyUniverse(countries: Country[]): Promise<{

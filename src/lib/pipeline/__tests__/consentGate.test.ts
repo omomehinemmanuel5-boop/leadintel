@@ -10,6 +10,7 @@ function makeContact(overrides: Partial<Contact> = {}): Contact {
     title: "CEO",
     country: "AU",
     discoverySource: "test",
+    provider: "demo",
     stage: "name_discovery",
     ...overrides,
   };

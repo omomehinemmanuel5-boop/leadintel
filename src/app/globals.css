@@ -31,6 +31,10 @@
   --red: #ef6a6a;
   --red-dim: rgba(239, 106, 106, 0.12);
   --red-border: rgba(239, 106, 106, 0.35);
+
+  --blue: #6fa8f5;
+  --blue-dim: rgba(111, 168, 245, 0.14);
+  --blue-border: rgba(111, 168, 245, 0.35);
 }
 
 * {

@@ -1,16 +1,14 @@
 import { Company } from "@/lib/types";
+import { hasGoogle } from "@/lib/providers/config";
+import { findDomainViaGoogle } from "@/lib/providers/google";
 
 /**
  * STAGE 2 — Domain resolution
  *
- * Production sources (free):
- *  - Clearbit Logo/Autocomplete API (no key required for basic lookup)
- *  - Google Programmable Search Engine (100 free queries/day with a key —
- *    the one place you may eventually want a free-tier key, but the
- *    heuristic below covers most cases without it)
- *
- * Strategy: try a cheap heuristic first (slugify company name -> common
- * TLD per country), and only fall back to a search API for the misses.
+ * Chain: registry-provided domain (already correct, just confirm it
+ * resolves) -> heuristic guess + DNS confirm -> Google Custom Search
+ * fallback if GOOGLE_API_KEY/GOOGLE_CSE_ID are set -> give up and flag
+ * for manual review.
  */
 
 const TLD_BY_COUNTRY: Record<string, string> = {
@@ -72,10 +70,23 @@ export async function resolveDomains(companies: Company[]): Promise<{
       if (resolves) {
         return { company: { ...company, domain: guess }, log: `[${company.name}] resolved -> ${guess} (heuristic + DNS confirmed)` };
       }
-      // TODO: fall back to a search-based lookup here if you add a key later
+
+      if (hasGoogle()) {
+        const googleDomain = await findDomainViaGoogle(company.name, company.country);
+        if (googleDomain) {
+          const googleResolves = await verifyDomainResolves(googleDomain);
+          if (googleResolves) {
+            return {
+              company: { ...company, domain: googleDomain },
+              log: `[${company.name}] heuristic guess failed — Google Search found ${googleDomain} (DNS confirmed)`,
+            };
+          }
+        }
+      }
+
       return {
         company: { ...company, domain: undefined },
-        log: `[${company.name}] heuristic guess "${guess}" did not resolve — needs manual/search fallback`,
+        log: `[${company.name}] heuristic guess "${guess}" did not resolve${hasGoogle() ? " and Google fallback found nothing usable" : " — set GOOGLE_API_KEY/GOOGLE_CSE_ID to enable a search fallback"}`,
       };
     })
   );

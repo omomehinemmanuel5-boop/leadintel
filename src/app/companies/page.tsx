@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PageHeader, Badge, EmptyState, ErrorBanner } from "@/components/ui";
+import { providerBadge } from "@/lib/providerBadge";
 import { Building2, ExternalLink } from "lucide-react";
 
 interface Company {
@@ -11,6 +12,7 @@ interface Company {
   domain?: string;
   registryId?: string;
   source: string;
+  provider: string;
   runId: string;
 }
 
@@ -125,9 +127,7 @@ export default function CompaniesPage() {
                       {c.registryId ?? "—"}
                     </td>
                     <td className="px-3 py-2.5">
-                      <Badge tone={c.source.includes("seed") ? "amber" : "teal"}>
-                        {c.source.includes("seed") ? "demo data" : "live"}
-                      </Badge>
+                      <Badge tone={providerBadge(c.provider).tone}>{providerBadge(c.provider).label}</Badge>
                     </td>
                   </tr>
                 ))}
