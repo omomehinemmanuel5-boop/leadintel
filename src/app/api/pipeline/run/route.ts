@@ -9,6 +9,8 @@ import { verifyContacts } from "@/lib/pipeline/verification";
 import { runSuppressionGate } from "@/lib/pipeline/suppressionGate";
 import { buildOutreachQueue } from "@/lib/pipeline/outreachQueue";
 import { saveRun } from "@/lib/store";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { RunPipelineSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -26,9 +28,25 @@ function emptyStage(stage: StageId) {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({}));
-  const countries: Country[] = body.countries?.length ? body.countries : ["AU", "DE", "US", "CA"];
-  const label: string | undefined = body.label;
+  // Rate limit: 5 runs per 5 minutes per client. This is a cost/abuse
+  // control, not a business rule — tune it in lib/rateLimit.ts.
+  const identity = req.headers.get("x-forwarded-for") ?? "unknown";
+  const rl = checkRateLimit(`pipeline_run:${identity}`, { limit: 5, windowMs: 5 * 60 * 1000 });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+    );
+  }
+
+  const rawBody = await req.json().catch(() => ({}));
+  const parsed = RunPipelineSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid request body", details: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const countries: Country[] = parsed.data.countries?.length ? parsed.data.countries : ["AU", "DE", "US", "CA"];
+  const label = parsed.data.label;
 
   const stages: PipelineRun["stages"] = Object.fromEntries(
     STAGE_ORDER.map((s) => [s, emptyStage(s)])

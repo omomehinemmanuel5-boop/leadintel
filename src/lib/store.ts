@@ -19,7 +19,6 @@ interface GlobalStore {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var __leadintelStore: GlobalStore | undefined;
 }
 

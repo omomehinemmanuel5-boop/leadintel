@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { SuppressionAddSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
 
@@ -36,12 +37,13 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({}));
-  const email = (body.email as string | undefined)?.trim().toLowerCase();
-  const reason = (body.reason as string | undefined) ?? "manually added";
-  if (!email) {
-    return NextResponse.json({ error: "email is required" }, { status: 400 });
+  const rawBody = await req.json().catch(() => ({}));
+  const parsed = SuppressionAddSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid request body", details: parsed.error.flatten() }, { status: 400 });
   }
+  const email = parsed.data.email.toLowerCase();
+  const reason = parsed.data.reason ?? "manually added";
   const list = load();
   if (!list.some((e) => e.email === email)) {
     list.push({ email, reason, addedAt: new Date().toISOString() });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PageHeader, Badge } from "@/components/ui";
+import { PageHeader } from "@/components/ui";
 import { Trash2, Plus, ShieldOff, Database } from "lucide-react";
 
 interface SuppressionEntry {

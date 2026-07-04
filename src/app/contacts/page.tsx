@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { PageHeader, Badge, EmptyState } from "@/components/ui";
+import { PageHeader, Badge, EmptyState, ErrorBanner } from "@/components/ui";
 import { Users, Download } from "lucide-react";
 
 interface Contact {
@@ -24,14 +24,24 @@ export default function ContactsPage() {
   const [country, setCountry] = useState("ALL");
   const [onlyEligible, setOnlyEligible] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  function load() {
+    setLoading(true);
+    setError(null);
+    fetch("/api/contacts")
+      .then((r) => {
+        if (!r.ok) throw new Error(`Failed to load contacts (${r.status})`);
+        return r.json();
+      })
+      .then((d) => setContacts(d.contacts))
+      .catch((e) => setError(e.message || "Failed to load contacts."))
+      .finally(() => setLoading(false));
+  }
 
   useEffect(() => {
-    fetch("/api/contacts")
-      .then((r) => r.json())
-      .then((d) => {
-        setContacts(d.contacts);
-        setLoading(false);
-      });
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount pattern
+    load();
   }, []);
 
   const countries = Array.from(new Set(contacts.map((c) => c.country)));
@@ -65,7 +75,13 @@ export default function ContactsPage() {
         }
       />
 
-      {!loading && contacts.length === 0 ? (
+      {error && (
+        <div className="mb-4">
+          <ErrorBanner message={error} onRetry={load} />
+        </div>
+      )}
+
+      {!loading && !error && contacts.length === 0 ? (
         <EmptyState icon={Users} title="No contacts yet" description="Run a search job to populate this view." />
       ) : (
         <>

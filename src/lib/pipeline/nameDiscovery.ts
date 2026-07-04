@@ -19,7 +19,7 @@ import { Company, Contact } from "@/lib/types";
  * to the company's own domain, never a social platform.
  */
 
-async function discoverLive(company: Company): Promise<Contact | null> {
+async function discoverLive(_company: Company): Promise<Contact | null> {
   // TODO: fetch `${company.domain}/about` (or /leadership, /team,
   // /ueber-uns for DE) and extract a name + title near words like
   // "CEO", "Founder", "Geschäftsführer". Keep this scoped to pages the

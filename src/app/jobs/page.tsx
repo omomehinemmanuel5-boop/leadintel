@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PageHeader, Badge, EmptyState } from "@/components/ui";
+import { PageHeader, Badge, EmptyState, ErrorBanner } from "@/components/ui";
 import { Search, Loader2 } from "lucide-react";
 
 type Country = "AU" | "DE" | "US" | "CA";
@@ -29,19 +29,26 @@ export default function JobsPage() {
   const [selected, setSelected] = useState<Country[]>(["AU", "DE", "US", "CA"]);
   const [label, setLabel] = useState("");
   const [running, setRunning] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
   const [jobs, setJobs] = useState<JobSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   function loadJobs() {
+    setLoading(true);
+    setLoadError(null);
     fetch("/api/jobs")
-      .then((r) => r.json())
-      .then((d) => {
-        setJobs(d.runs);
-        setLoading(false);
-      });
+      .then((r) => {
+        if (!r.ok) throw new Error(`Failed to load jobs (${r.status})`);
+        return r.json();
+      })
+      .then((d) => setJobs(d.runs))
+      .catch((e) => setLoadError(e.message || "Failed to load job history."))
+      .finally(() => setLoading(false));
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount pattern
     loadJobs();
   }, []);
 
@@ -51,15 +58,21 @@ export default function JobsPage() {
 
   async function runJob() {
     setRunning(true);
+    setRunError(null);
     try {
       const res = await fetch("/api/pipeline/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ countries: selected, label: label || undefined }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Run failed (${res.status})`);
+      }
       const data = await res.json();
       router.push(`/jobs/${data.run.id}`);
-    } finally {
+    } catch (e) {
+      setRunError(e instanceof Error ? e.message : "Failed to run search job.");
       setRunning(false);
     }
   }
@@ -103,6 +116,12 @@ export default function JobsPage() {
           ))}
         </div>
 
+        {runError && (
+          <div className="mb-4">
+            <ErrorBanner message={runError} onRetry={runJob} />
+          </div>
+        )}
+
         <button
           onClick={runJob}
           disabled={running || selected.length === 0}
@@ -117,7 +136,13 @@ export default function JobsPage() {
         Job history
       </div>
 
-      {!loading && jobs.length === 0 ? (
+      {loadError && (
+        <div className="mb-4">
+          <ErrorBanner message={loadError} onRetry={loadJobs} />
+        </div>
+      )}
+
+      {!loading && !loadError && jobs.length === 0 ? (
         <EmptyState icon={Search} title="No jobs yet" description="Run your first job above to see it here." />
       ) : (
         <div className="space-y-2">

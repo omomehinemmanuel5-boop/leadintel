@@ -1,4 +1,4 @@
-import { Contact, ConsentBasis, Country } from "@/lib/types";
+import { Contact, ConsentBasis } from "@/lib/types";
 
 /**
  * GATE — Consent classification
@@ -18,7 +18,7 @@ interface ConsentDecision {
   notes: string;
 }
 
-function classifyAU(contact: Contact): ConsentDecision {
+function classifyAU(_contact: Contact): ConsentDecision {
   // Australia's Privacy Act (APP 7) permits direct marketing to a business
   // contact where the info was collected from a source other than the
   // individual directly, IF it's clearly related to their professional
@@ -30,7 +30,7 @@ function classifyAU(contact: Contact): ConsentDecision {
   };
 }
 
-function classifyDE(contact: Contact): ConsentDecision {
+function classifyDE(_contact: Contact): ConsentDecision {
   // GDPR Art. 6(1)(f) "legitimate interest" can cover B2B cold outreach,
   // but it's a narrower needle than AU/CA — requires a documented
   // balancing test and is more defensible for closely-relevant offers to
@@ -42,7 +42,7 @@ function classifyDE(contact: Contact): ConsentDecision {
   };
 }
 
-function classifyUS(contact: Contact): ConsentDecision {
+function classifyUS(_contact: Contact): ConsentDecision {
   // CAN-SPAM doesn't require prior consent for B2B commercial email, but
   // mandates accurate headers, no deceptive subject lines, a physical
   // address, and a working opt-out honored within 10 business days.
@@ -52,7 +52,7 @@ function classifyUS(contact: Contact): ConsentDecision {
   };
 }
 
-function classifyCA(contact: Contact): ConsentDecision {
+function classifyCA(_contact: Contact): ConsentDecision {
   // CASL defaults to requiring express consent, but has an "implied
   // consent" carve-out for an existing business relationship OR where the
   // recipient has conspicuously published their business email and the

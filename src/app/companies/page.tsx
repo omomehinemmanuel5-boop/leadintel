@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PageHeader, Badge, EmptyState } from "@/components/ui";
+import { PageHeader, Badge, EmptyState, ErrorBanner } from "@/components/ui";
 import { Building2, ExternalLink } from "lucide-react";
 
 interface Company {
@@ -20,14 +20,24 @@ export default function CompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [filter, setFilter] = useState<string>("ALL");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  function load() {
+    setLoading(true);
+    setError(null);
+    fetch("/api/companies")
+      .then((r) => {
+        if (!r.ok) throw new Error(`Failed to load companies (${r.status})`);
+        return r.json();
+      })
+      .then((d) => setCompanies(d.companies))
+      .catch((e) => setError(e.message || "Failed to load companies."))
+      .finally(() => setLoading(false));
+  }
 
   useEffect(() => {
-    fetch("/api/companies")
-      .then((r) => r.json())
-      .then((d) => {
-        setCompanies(d.companies);
-        setLoading(false);
-      });
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount pattern
+    load();
   }, []);
 
   const countries = Array.from(new Set(companies.map((c) => c.country)));
@@ -41,7 +51,13 @@ export default function CompaniesPage() {
         description="Every company surfaced across your search jobs, deduplicated, with its source registry."
       />
 
-      {!loading && companies.length === 0 ? (
+      {error && (
+        <div className="mb-4">
+          <ErrorBanner message={error} onRetry={load} />
+        </div>
+      )}
+
+      {!loading && !error && companies.length === 0 ? (
         <EmptyState
           icon={Building2}
           title="No companies yet"

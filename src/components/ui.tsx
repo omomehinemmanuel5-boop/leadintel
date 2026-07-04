@@ -1,4 +1,24 @@
-import { LucideIcon } from "lucide-react";
+import { LucideIcon, AlertCircle, RotateCw } from "lucide-react";
+
+export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  return (
+    <div className="glass rounded-2xl p-5 border-[var(--red-border)] bg-[var(--red-dim)] flex items-start gap-3">
+      <AlertCircle size={18} className="text-[var(--red)] shrink-0 mt-0.5" />
+      <div className="flex-1">
+        <div className="text-sm font-medium text-[var(--red)] mb-1">Something went wrong</div>
+        <p className="text-xs text-[var(--ink-dim)] leading-relaxed">{message}</p>
+      </div>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg glass glass-hover text-xs font-medium shrink-0"
+        >
+          <RotateCw size={12} /> Retry
+        </button>
+      )}
+    </div>
+  );
+}
 
 export function PageHeader({
   eyebrow,

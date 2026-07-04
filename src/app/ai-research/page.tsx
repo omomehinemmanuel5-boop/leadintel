@@ -40,7 +40,7 @@ export default function AIResearchPage() {
         <div>
           <div className="font-semibold text-sm mb-1">Why this isn&apos;t built yet</div>
           <p className="text-xs text-[var(--ink-dim)] leading-relaxed">
-            AI features are only as good as what they're grounded in. Company universe and name
+            AI features are only as good as what they&apos;re grounded in. Company universe and name
             discovery are still partly demo data for three of four countries — wiring AI summaries on
             top of that now would mean confidently-worded output about companies that aren&apos;t real.
             Once the live connectors are in (see Integrations), this becomes the natural next layer.

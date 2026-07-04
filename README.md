@@ -65,7 +65,29 @@ Recommended order: pick one remaining country's registry, confirm the shape matc
 2. Move the store and suppression list to a real database.
 3. Set up SPF/DKIM/DMARC on your sending domain before the outreach queue stage does anything live.
 
-## Local development
+## Production readiness
+
+This section is the honest checklist — what's actually hardened vs. what's the one remaining manual step.
+
+**Done:**
+- **Access control.** The entire app is behind HTTP Basic Auth (`src/middleware.ts`), fail-closed if credentials aren't set. Set `ADMIN_USER` / `ADMIN_PASSWORD` — see `.env.example`. `/api/health` is intentionally left open for uptime monitors.
+- **Rate limiting.** `/api/pipeline/run` is capped at 5 runs / 5 minutes per client (`src/lib/rateLimit.ts`) — a cost/abuse control given every run makes real external calls (SEC EDGAR, DNS). Documented caveat: it's in-memory per-instance, not a distributed limit — real protection against a determined actor still needs Upstash Redis.
+- **Input validation.** Every API route validates its body with `zod` (`src/lib/validation.ts`) instead of trusting client input — malformed requests get a clean 400, not a crash.
+- **Security headers.** `next.config.ts` sets X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and a baseline CSP.
+- **Tests.** `npm run test` (Vitest) covers the consent gate's per-jurisdiction logic and the outreach queue's eligibility rules — the two places a bug would mean contacting someone who shouldn't be contacted. Run in CI on every push.
+- **CI.** `.github/workflows/ci.yml` runs lint, test, and build on every push/PR to `main`.
+- **Reliability.** All DNS/fetch calls in the pipeline are parallelized with 3-4s timeout caps (a sequential version measured 17s+ for a 4-country run; parallelized version measured ~4s) — headroom against Vercel's serverless function timeout.
+- **Client error handling.** Dashboard, Search Jobs, Companies, and Contacts show a real error state with retry instead of hanging on "Loading…" forever if an API call fails.
+
+**Not done — the one real gap:**
+- **Persistence.** Search jobs/companies/contacts are in server memory; the suppression list is a JSON file. Both reset on redeploy/cold start. This needs a real Postgres database, which needs one manual step I can't do headlessly: open the Vercel dashboard → this project → Storage tab → connect a database (Neon's free tier is the zero-cost option, one click). Once that's done, tell me and I'll wire `src/lib/store.ts` and the suppression list over to real queries — the function signatures are already written so that's a swap, not a rewrite.
+
+**Not done — deliberately deferred, not urgent:**
+- Real multi-user auth (NextAuth.js) — single shared password is fine until more than one person needs their own login.
+- Distributed rate limiting (Upstash) — only matters once the app is under real adversarial load.
+- AI Research module — see that page for the reasoning.
+
+
 
 ```bash
 npm install

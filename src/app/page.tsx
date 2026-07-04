@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { PageHeader, StatCard, Badge, EmptyState } from "@/components/ui";
+import { PageHeader, StatCard, Badge, EmptyState, ErrorBanner } from "@/components/ui";
 import { Building2, Users, ShieldCheck, Send, Search, ArrowRight, Plus } from "lucide-react";
 
 interface Analytics {
@@ -32,17 +32,33 @@ export default function Dashboard() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [jobs, setJobs] = useState<JobSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    Promise.all([
+      fetch("/api/analytics").then((r) => {
+        if (!r.ok) throw new Error(`Analytics request failed (${r.status})`);
+        return r.json();
+      }),
+      fetch("/api/jobs").then((r) => {
+        if (!r.ok) throw new Error(`Jobs request failed (${r.status})`);
+        return r.json();
+      }),
+    ])
+      .then(([a, j]) => {
+        setAnalytics(a);
+        setJobs(j.runs.slice(0, 6));
+      })
+      .catch((e) => setError(e.message || "Failed to load dashboard data."))
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/analytics").then((r) => r.json()),
-      fetch("/api/jobs").then((r) => r.json()),
-    ]).then(([a, j]) => {
-      setAnalytics(a);
-      setJobs(j.runs.slice(0, 6));
-      setLoading(false);
-    });
-  }, []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount pattern, load() starts its own loading/error state
+    load();
+  }, [load]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8">
@@ -61,7 +77,9 @@ export default function Dashboard() {
         }
       />
 
-      {!loading && analytics && analytics.totalRuns === 0 ? (
+      {error && <ErrorBanner message={error} onRetry={load} />}
+
+      {!loading && !error && analytics && analytics.totalRuns === 0 ? (
         <EmptyState
           icon={Search}
           title="No search jobs yet"
