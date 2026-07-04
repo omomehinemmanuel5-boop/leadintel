@@ -3,6 +3,7 @@ import path from "path";
 import { Company, Contact } from "@/lib/types";
 import { hasApollo, hasGoogle } from "@/lib/providers/config";
 import { findLeaderViaApollo, resetApolloRunBudget } from "@/lib/providers/apollo";
+import { findLeaderViaSecProxy } from "@/lib/providers/secFilings";
 import { findLeaderViaGoogle } from "@/lib/providers/google";
 
 /**
@@ -11,13 +12,16 @@ import { findLeaderViaGoogle } from "@/lib/providers/google";
  * Provider chain, in order:
  *  1. Apollo.io (if APOLLO_API_KEY set) — real database match, highest
  *     confidence, but costs credits, so it's tried first and capped.
- *  2. Google Custom Search (if GOOGLE_API_KEY/GOOGLE_CSE_ID set) — reads
+ *  2. SEC DEF 14A proxy filings (US companies only, from EDGAR's CIK) —
+ *     free, zero registration, and MORE authoritative than Google since
+ *     it's an official regulatory disclosure, not a scraped page.
+ *  3. Google Custom Search (if GOOGLE_API_KEY/GOOGLE_CSE_ID set) — reads
  *     only the company's own site, free, but lower confidence (regex
  *     extraction over HTML, not a structured match).
- *  3. Demo seed data — fictional, clearly labeled, keeps the pipeline
+ *  4. Demo seed data — fictional, clearly labeled, keeps the pipeline
  *     runnable with zero keys configured.
  *
- * If none of the three find anything, the contact is skipped and the
+ * If none of the four find anything, the contact is skipped and the
  * log says exactly why — never silently faked.
  */
 
@@ -59,7 +63,26 @@ export async function discoverNames(companies: Company[]): Promise<{
       }
     }
 
-    // 2. Google
+    // 2. SEC DEF 14A proxy filing (US, free, no registration)
+    if (company.provider === "sec_edgar") {
+      const found = await findLeaderViaSecProxy(company);
+      if (found) {
+        contacts.push({
+          id: `${company.id}-lead`,
+          companyId: company.id,
+          name: found.name,
+          title: found.title,
+          country: company.country,
+          discoverySource: found.discoverySource,
+          provider: "sec_proxy",
+          stage: "name_discovery",
+        });
+        log.push(`[${company.name}] found via SEC DEF 14A proxy filing (authoritative, free, no key)`);
+        continue;
+      }
+    }
+
+    // 3. Google
     if (hasGoogle()) {
       const found = await findLeaderViaGoogle(company);
       if (found) {
@@ -78,7 +101,7 @@ export async function discoverNames(companies: Company[]): Promise<{
       }
     }
 
-    // 3. Demo fallback
+    // 4. Demo fallback
     const seeded = seedLeadership[company.id];
     if (seeded) {
       contacts.push({
@@ -98,10 +121,14 @@ export async function discoverNames(companies: Company[]): Promise<{
     if (company.provider === "demo") {
       log.push(`[${company.name}] no leader found (demo record has none) — skipped`);
     } else {
-      const configured = [hasApollo() && "Apollo", hasGoogle() && "Google"].filter(Boolean);
+      const attempted = [
+        hasApollo() && "Apollo",
+        company.provider === "sec_edgar" && "SEC proxy filing search",
+        hasGoogle() && "Google",
+      ].filter(Boolean);
       log.push(
-        configured.length > 0
-          ? `[${company.name}] ${configured.join(" and ")} found nothing for this company — skipped`
+        attempted.length > 0
+          ? `[${company.name}] ${attempted.join(", ")} found nothing for this company — skipped`
           : `[${company.name}] real company, no name-discovery provider configured (set APOLLO_API_KEY and/or GOOGLE_API_KEY+GOOGLE_CSE_ID) — skipped`
       );
     }

@@ -1,5 +1,6 @@
 export const PROVIDER_BADGE: Record<string, { label: string; tone: "teal" | "violet" | "blue" | "amber" | "neutral" }> = {
   sec_edgar: { label: "SEC EDGAR", tone: "teal" },
+  sec_proxy: { label: "SEC Proxy Filing", tone: "teal" },
   apollo: { label: "Apollo.io", tone: "violet" },
   google_search: { label: "Google Search", tone: "blue" },
   abr: { label: "ABR", tone: "teal" },

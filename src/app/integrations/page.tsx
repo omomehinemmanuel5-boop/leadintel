@@ -33,7 +33,8 @@ const CONNECTORS = [
     stage: "Name discovery",
     items: [
       { name: "Apollo.io (people search + match)", status: "apollo" as const, note: "Real database match. Costs credits — capped at 5 enrichments/run." },
-      { name: "Google Search (heuristic extraction)", status: "google" as const, note: "Reads the company's own site only. Lower confidence than Apollo." },
+      { name: "SEC DEF 14A proxy filings (US)", status: "live" as const, note: "Free, zero registration. More authoritative than Google — reads an official regulatory disclosure, not a scraped page." },
+      { name: "Google Search (heuristic extraction)", status: "google" as const, note: "Reads the company's own site only. Lower confidence than Apollo or SEC filings." },
       { name: "Seed demo data", status: "demo" as const, note: "Fictional, clearly labeled. Used only when no provider finds a match." },
     ],
   },

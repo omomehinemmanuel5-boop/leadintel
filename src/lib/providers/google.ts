@@ -1,4 +1,5 @@
 import { Company, Contact } from "@/lib/types";
+import { looksLikeHumanName } from "@/lib/nameExtraction";
 
 /**
  * Google Programmable Search Engine (Custom Search JSON API).
@@ -85,7 +86,7 @@ export async function findLeaderViaGoogle(
       .replace(/\s+/g, " ");
 
     const found = extractNameNearTitle(text) ?? extractNameNearTitle(top.snippet);
-    if (!found) return null;
+    if (!found || !looksLikeHumanName(found.name)) return null;
 
     return {
       name: found.name,
