@@ -1,21 +1,30 @@
 import fs from "fs";
 import path from "path";
 import { Company, Country } from "@/lib/types";
+import { fetchAustraliaCompanies } from "@/lib/providers/abr";
+import { fetchCanadaCompanies } from "@/lib/providers/canada";
+import { hasAbr } from "@/lib/providers/config";
 
 /**
  * STAGE 1 — Company universe
  *
- * Production sources (no paid keys required):
- *  - OpenCorporates search API (free tier, rate limited — no key needed for light use)
- *  - Australian Business Register (ABR) web services (free ABN lookup)
- *  - SEC EDGAR company tickers file (US public companies, fully free/no key) — LIVE
- *  - Corporations Canada federal corporate search (free)
- *  - Handelsregister / Unternehmensregister (DE — free search, no bulk API)
+ * Live sources, no paid keys required:
+ *  - SEC EDGAR (US) — fully free, no key at all
+ *  - Corporations Canada (CA) — fully free, no key at all (bulk CSV)
+ *  - Australian Business Register (AU) — free, but needs a registered
+ *    ABR_GUID (same-day email registration, not a purchase)
+ *  - Germany (DE) — deliberately NOT wired. The Handelsregister has no
+ *    official API, imposes a 60 query/hour limit on its portal, and the
+ *    register authority has stated that mass automated queries may
+ *    constitute a criminal offense under §§303a/303b StGB. The only
+ *    legal free option is OffeneRegister.de's static bulk dataset
+ *    (2017-2019, stale) — a one-time manual import, not something to
+ *    query live. Not building a connector that could look like it's
+ *    doing that.
  *
- * This skeleton ships with a demo fallback (data/seed-companies.json) for
- * countries without a live connector yet, so the pipeline always runs
- * end-to-end. Swap `fetchLive` for a real registry call per country when
- * you're ready — the shape of Company stays the same either way.
+ * This skeleton ships with a demo fallback (data/seed-companies.json)
+ * for whatever isn't configured, so the pipeline always runs
+ * end-to-end.
  */
 
 // SEC requires a descriptive User-Agent identifying the requester —
@@ -88,16 +97,14 @@ async function fetchLive(country: Country): Promise<Company[] | null> {
   if (country === "US") {
     return fetchUSCompaniesFromSEC();
   }
+  if (country === "CA") {
+    return fetchCanadaCompanies();
+  }
+  if (country === "AU" && hasAbr()) {
+    return fetchAustraliaCompanies();
+  }
 
-  // TODO: implement remaining registries, e.g.:
-  //
-  // if (country === "AU") {
-  //   const res = await fetch("https://abr.business.gov.au/...");
-  //   ...
-  // }
-  //
-  // Left unimplemented on purpose — wire in one registry at a time and
-  // keep the free-tier rate limit in the fetch (see README).
+  // DE: deliberately not wired, see file header comment.
   return null;
 }
 
@@ -122,14 +129,19 @@ export async function getCompanyUniverse(countries: Country[]): Promise<{
   for (const country of countries) {
     const live = await fetchLive(country);
     if (live) {
-      log.push(`[${country}] fetched ${live.length} companies from SEC EDGAR (live)`);
+      const providerName = live[0]?.provider ?? "live source";
+      log.push(`[${country}] fetched ${live.length} companies from ${providerName} (live)`);
       results.push(...live);
     } else {
       const { companies } = loadSeed();
       const seeded = companies.filter((c) => c.country === country);
-      log.push(
-        `[${country}] no live connector configured — using ${seeded.length} demo companies (data/seed-companies.json)`
-      );
+      const reason =
+        country === "AU" && !hasAbr()
+          ? "ABR_GUID not set"
+          : country === "DE"
+            ? "no legal free live API exists for Germany, see file header"
+            : "no live connector configured";
+      log.push(`[${country}] ${reason} — using ${seeded.length} demo companies (data/seed-companies.json)`);
       results.push(...seeded);
     }
   }

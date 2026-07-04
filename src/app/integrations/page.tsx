@@ -7,6 +7,7 @@ import { Plug, CheckCircle2, XCircle } from "lucide-react";
 interface Status {
   apollo: boolean;
   google: boolean;
+  abr: boolean;
 }
 
 const CONNECTORS = [
@@ -14,10 +15,10 @@ const CONNECTORS = [
     stage: "Company universe",
     items: [
       { name: "SEC EDGAR (US)", status: "live" as const, note: "Free, no key. Real public companies + websites." },
+      { name: "Corporations Canada (CA)", status: "live" as const, note: "Free, no key. Bulk CSV from Government of Canada Open Data — 1.5M+ real companies." },
+      { name: "Australian Business Register (AU)", status: "abr" as const, note: "Free, but needs a registered GUID (same-day email signup, not a purchase)." },
+      { name: "Germany (DE)", status: "blocked" as const, note: "No legal free live API exists — see note below." },
       { name: "Apollo.io (organization search)", status: "apollo" as const, note: "Not yet wired for company universe — currently used for name+email discovery only." },
-      { name: "Australian Business Register", status: "planned" as const, note: "Free ABN lookup." },
-      { name: "Corporations Canada", status: "planned" as const, note: "Free federal registry search." },
-      { name: "Unternehmensregister (DE)", status: "planned" as const, note: "Free search, no bulk API." },
     ],
   },
   {
@@ -55,10 +56,11 @@ export default function IntegrationsPage() {
       .then(setStatus);
   }, []);
 
-  function renderStatus(kind: "live" | "demo" | "planned" | "apollo" | "google") {
+  function renderStatus(kind: "live" | "demo" | "planned" | "apollo" | "google" | "abr" | "blocked") {
     if (kind === "live") return <Badge tone="teal">Live</Badge>;
     if (kind === "demo") return <Badge tone="amber">Demo data</Badge>;
     if (kind === "planned") return <Badge tone="neutral">Planned</Badge>;
+    if (kind === "blocked") return <Badge tone="red">No legal path</Badge>;
     if (kind === "apollo") {
       if (!status) return <Badge tone="neutral">Checking…</Badge>;
       return status.apollo ? <Badge tone="violet">Apollo · configured</Badge> : <Badge tone="neutral">Apollo · no key set</Badge>;
@@ -66,6 +68,10 @@ export default function IntegrationsPage() {
     if (kind === "google") {
       if (!status) return <Badge tone="neutral">Checking…</Badge>;
       return status.google ? <Badge tone="blue">Google · configured</Badge> : <Badge tone="neutral">Google · no key set</Badge>;
+    }
+    if (kind === "abr") {
+      if (!status) return <Badge tone="neutral">Checking…</Badge>;
+      return status.abr ? <Badge tone="teal">ABR · configured</Badge> : <Badge tone="neutral">ABR · no GUID set</Badge>;
     }
     return null;
   }
@@ -79,7 +85,7 @@ export default function IntegrationsPage() {
       />
 
       {status && (
-        <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
           <div className="glass rounded-2xl p-4 flex items-center gap-3">
             {status.apollo ? (
               <CheckCircle2 size={18} className="text-[var(--violet)]" />
@@ -106,8 +112,32 @@ export default function IntegrationsPage() {
               </div>
             </div>
           </div>
+          <div className="glass rounded-2xl p-4 flex items-center gap-3">
+            {status.abr ? (
+              <CheckCircle2 size={18} className="text-[var(--teal)]" />
+            ) : (
+              <XCircle size={18} className="text-[var(--ink-faint)]" />
+            )}
+            <div>
+              <div className="text-sm font-medium">Australian Business Register</div>
+              <div className="text-[11px] text-[var(--ink-dim)]">
+                {status.abr ? "GUID configured" : "ABR_GUID not set (free, same-day)"}
+              </div>
+            </div>
+          </div>
         </div>
       )}
+
+      <div className="glass rounded-2xl p-4 mb-6 border-[var(--red-border)] bg-[var(--red-dim)]">
+        <div className="text-sm font-medium text-[var(--red)] mb-1">Why Germany has no connector</div>
+        <p className="text-[12.5px] text-[var(--ink-dim)] leading-relaxed">
+          The Handelsregister has no official API, caps its own portal at 60 queries/hour, and the
+          register authority has stated that mass automated queries may constitute a criminal offense
+          under §§303a/303b StGB. The only free option — OffeneRegister.de&apos;s static bulk dataset — is
+          from 2017-2019 and meant as a one-time manual import, not a live connector. Not building
+          something that could look like it&apos;s automating queries against the real register.
+        </p>
+      </div>
 
       <div className="space-y-6">
         {CONNECTORS.map((group) => (

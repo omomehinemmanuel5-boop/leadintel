@@ -3,6 +3,7 @@ export const PROVIDER_BADGE: Record<string, { label: string; tone: "teal" | "vio
   apollo: { label: "Apollo.io", tone: "violet" },
   google_search: { label: "Google Search", tone: "blue" },
   abr: { label: "ABR", tone: "teal" },
+  corporations_canada: { label: "Corporations Canada", tone: "teal" },
   demo: { label: "Demo data", tone: "amber" },
   manual: { label: "Manual", tone: "neutral" },
 };

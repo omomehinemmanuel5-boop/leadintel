@@ -14,11 +14,16 @@ export function hasGoogle(): boolean {
   return !!(process.env.GOOGLE_API_KEY && process.env.GOOGLE_CSE_ID);
 }
 
+export function hasAbr(): boolean {
+  return !!process.env.ABR_GUID;
+}
+
 export const PROVIDER_LABELS: Record<string, string> = {
   sec_edgar: "SEC EDGAR",
   apollo: "Apollo.io",
   google_search: "Google Search",
   abr: "Australian Business Register",
+  corporations_canada: "Corporations Canada",
   demo: "Demo data",
   manual: "Manually added",
 };
