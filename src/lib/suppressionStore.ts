@@ -21,6 +21,12 @@ import { get } from "@vercel/edge-config";
  * EDGE_CONFIG_WRITE_TOKEN and writes will cleanly fall back to the local
  * file (dev-only durability) until real Postgres replaces this whole
  * module — which is the actual right long-term fix.
+ *
+ * One more real behavior confirmed during testing: a write can take up
+ * to ~10 seconds to propagate globally (this is Vercel's documented
+ * behavior, not a bug here) — an immediate read-after-write may not see
+ * the change yet. Verified this resolves itself within that window and
+ * genuinely survives a production redeploy.
  */
 
 const SUPPRESSION_KEY = "suppression-list";
