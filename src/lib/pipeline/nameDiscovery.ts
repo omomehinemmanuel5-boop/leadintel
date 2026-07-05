@@ -3,7 +3,7 @@ import path from "path";
 import { Company, Contact } from "@/lib/types";
 import { hasApollo, hasGoogle } from "@/lib/providers/config";
 import { findLeaderViaApollo, resetApolloRunBudget } from "@/lib/providers/apollo";
-import { findLeaderViaSecProxy } from "@/lib/providers/secFilings";
+import { findLeaderViaSecOfficerTable } from "@/lib/providers/secOfficerTable";
 import { findLeaderViaGoogle } from "@/lib/providers/google";
 
 /**
@@ -12,17 +12,32 @@ import { findLeaderViaGoogle } from "@/lib/providers/google";
  * Provider chain, in order:
  *  1. Apollo.io (if APOLLO_API_KEY set) — real database match, highest
  *     confidence, but costs credits, so it's tried first and capped.
- *  2. SEC DEF 14A proxy filings (US companies only, from EDGAR's CIK) —
- *     free, zero registration, and MORE authoritative than Google since
- *     it's an official regulatory disclosure, not a scraped page.
+ *  2. SEC 10-K, Item 401 executive officer table (US, free, zero
+ *     registration) — reliable because this section is structurally
+ *     guaranteed to be about the filing company's OWN officers.
+ *     Coverage isn't universal: some companies (Tesla, notably)
+ *     incorporate this section by reference to their proxy instead of
+ *     inlining it, so this legitimately returns nothing for them.
  *  3. Google Custom Search (if GOOGLE_API_KEY/GOOGLE_CSE_ID set) — reads
  *     only the company's own site, free, but lower confidence (regex
  *     extraction over HTML, not a structured match).
  *  4. Demo seed data — fictional, clearly labeled, keeps the pipeline
  *     runnable with zero keys configured.
  *
- * If none of the four find anything, the contact is skipped and the
- * log says exactly why — never silently faked.
+ * NOT in this chain: DEF 14A proxy statement extraction
+ * (src/lib/providers/secFilings.ts exists but is deliberately not
+ * imported here). Caught during live testing: Tesla's own proxy
+ * statement discusses Tim Cook's compensation as a peer-benchmarking
+ * comparison (common in "mega-grant" CEO pay disclosures), and the
+ * extraction had no way to distinguish "this company's own CEO" from
+ * "a peer company's CEO mentioned for comparison" — it returned "Tim
+ * Cook" as Tesla's CEO. That's a wrong answer that looks completely
+ * legitimate, which is worse than finding nothing. Left the file in
+ * place since the underlying idea works for many filings, but it needs
+ * a same-company anchor check before it's safe to re-enable.
+ *
+ * If none of the four active sources find anything, the contact is
+ * skipped and the log says exactly why — never silently faked.
  */
 
 function loadSeedLeadership(): Record<string, { name: string; title: string; discoverySource: string }> {
@@ -63,9 +78,9 @@ export async function discoverNames(companies: Company[]): Promise<{
       }
     }
 
-    // 2. SEC DEF 14A proxy filing (US, free, no registration)
+    // 2. SEC 10-K Item 401 executive officer table (US, free, no registration)
     if (company.provider === "sec_edgar") {
-      const found = await findLeaderViaSecProxy(company);
+      const found = await findLeaderViaSecOfficerTable(company);
       if (found) {
         contacts.push({
           id: `${company.id}-lead`,
@@ -77,7 +92,7 @@ export async function discoverNames(companies: Company[]): Promise<{
           provider: "sec_proxy",
           stage: "name_discovery",
         });
-        log.push(`[${company.name}] found via SEC DEF 14A proxy filing (authoritative, free, no key)`);
+        log.push(`[${company.name}] found via SEC 10-K officer table (most reliable free source)`);
         continue;
       }
     }
@@ -123,7 +138,7 @@ export async function discoverNames(companies: Company[]): Promise<{
     } else {
       const attempted = [
         hasApollo() && "Apollo",
-        company.provider === "sec_edgar" && "SEC proxy filing search",
+        company.provider === "sec_edgar" && "SEC 10-K officer table search",
         hasGoogle() && "Google",
       ].filter(Boolean);
       log.push(

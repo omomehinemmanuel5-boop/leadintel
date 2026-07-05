@@ -1,7 +1,22 @@
 import { Company, Contact } from "@/lib/types";
-import { looksLikeHumanName } from "@/lib/nameExtraction";
+import { trimToValidName } from "@/lib/nameExtraction";
 
 /**
+ * ⚠️ NOT CURRENTLY WIRED INTO THE PIPELINE — see nameDiscovery.ts header
+ * comment for why. Caught during live testing: a company's own DEF 14A
+ * can legitimately discuss a PEER company's CEO by name (compensation
+ * benchmarking tables), and this extraction has no way to tell that
+ * apart from the filing company's own CEO. Confirmed case: Tesla's
+ * proxy mentions Tim Cook's compensation as a peer comparison, and this
+ * returned "Tim Cook" as Tesla's CEO — a wrong answer that looked
+ * completely legitimate.
+ *
+ * Before re-enabling: add a same-company anchor check (e.g. require the
+ * matched name to appear within N characters of the filing company's
+ * own name, or scope extraction to a section that's structurally
+ * guaranteed to be about the filer, the way secOfficerTable.ts does
+ * with Item 401).
+ *
  * SEC DEF 14A (proxy statement) name extraction.
  *
  * Every US public company files a DEF 14A annually listing its named
@@ -91,8 +106,8 @@ export async function findLeaderViaSecProxy(
     const match = text.match(CEO_NAME_RE);
     if (!match) return null;
 
-    const candidate = match[1].trim();
-    if (!looksLikeHumanName(candidate)) return null;
+    const candidate = trimToValidName(match[1]);
+    if (!candidate) return null;
 
     return {
       name: candidate,

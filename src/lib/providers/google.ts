@@ -1,5 +1,5 @@
 import { Company, Contact } from "@/lib/types";
-import { looksLikeHumanName } from "@/lib/nameExtraction";
+import { trimToValidName } from "@/lib/nameExtraction";
 
 /**
  * Google Programmable Search Engine (Custom Search JSON API).
@@ -86,10 +86,12 @@ export async function findLeaderViaGoogle(
       .replace(/\s+/g, " ");
 
     const found = extractNameNearTitle(text) ?? extractNameNearTitle(top.snippet);
-    if (!found || !looksLikeHumanName(found.name)) return null;
+    if (!found) return null;
+    const trimmedName = trimToValidName(found.name);
+    if (!trimmedName) return null;
 
     return {
-      name: found.name,
+      name: trimmedName,
       title: found.title,
       discoverySource: `Google Search -> ${top.link} (heuristic extraction, lower confidence)`,
     };

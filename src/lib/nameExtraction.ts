@@ -13,6 +13,7 @@ const NON_NAME_WORDS = new Set([
   "section", "proxy", "statement", "annual", "meeting", "named", "election", "item",
   "table", "contents", "notice", "shareholders", "stockholders", "audit", "governance",
   "nominating", "risk", "management", "plan", "program", "policy", "form", "part",
+  "foundation", "of", "vice", "senior", "corporate", "title", "offices", "and",
 ]);
 
 export function looksLikeHumanName(candidate: string): boolean {
@@ -24,4 +25,20 @@ export function looksLikeHumanName(candidate: string): boolean {
     if (isInitial) return true;
     return clean.length >= 2 && !NON_NAME_WORDS.has(clean);
   });
+}
+
+/**
+ * Regex captures of "1-4 capitalized words before X" often grab extra
+ * boilerplate from the left (e.g. "Table of Contents Jen-Hsun Huang").
+ * The real name is usually the words closest to the anchor (the title),
+ * so this trims from the left until what remains passes validation, or
+ * gives up if nothing does.
+ */
+export function trimToValidName(candidate: string): string | null {
+  const words = candidate.trim().split(/\s+/);
+  for (let start = 0; start < words.length; start++) {
+    const window = words.slice(start).join(" ");
+    if (looksLikeHumanName(window)) return window;
+  }
+  return null;
 }
