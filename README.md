@@ -56,9 +56,9 @@ Every company and contact carries a `provider` field (`sec_edgar`, `apollo`, `go
 
 ## Persistence — read this before relying on it
 
-Search jobs, companies, and contacts currently live in an in-memory store (`src/lib/store.ts`) scoped to a single warm serverless instance. It resets on redeploy or cold start. This is intentional for the Foundation phase — the shape of every store function is written so swapping in a real database (Volume VI: Infrastructure & Deployment) is a drop-in change, not a rewrite. Vercel Postgres and Supabase both have zero-cost tiers to start with.
+**Suppression list: durable.** Backed by Vercel Edge Config (`src/lib/suppressionStore.ts`), a native Vercel product — provisioned via API with zero dashboard steps. Reads use a token scoped to only this one store (verified by testing that it genuinely can't write or touch anything else — safe to embed as a runtime secret). Writes are a disclosed tradeoff: Edge Config's write API has no scoped-token option, so `EDGE_CONFIG_WRITE_TOKEN` is a full account-level token. That's broader access than ideal for a runtime secret, done anyway for this single-operator tool that's already behind Basic Auth. If that tradeoff doesn't sit right, remove `EDGE_CONFIG_WRITE_TOKEN` — writes cleanly fall back to local-file-only (ephemeral in prod) until Postgres replaces this module.
 
-The suppression list (`data/suppression-list.json`) is file-based and works locally, but won't persist reliably once deployed — same fix applies.
+**Search jobs, companies, contacts: still in-memory.** `src/lib/store.ts` resets on redeploy or cold start. Edge Config isn't a fit here — Vercel's own guidance is against using it for frequently-updated data, and the Hobby tier caps writes at 100/month, which a single afternoon of pipeline runs would blow through. This still needs a real database (Volume VI: Infrastructure & Deployment). Vercel Postgres (via the Storage tab → Neon, one click) and Supabase both have zero-cost tiers — this is the one piece of setup that genuinely can't be done without that dashboard interaction, since installing a marketplace integration requires accepting terms as the account owner.
 
 ## Wiring in real connectors
 

@@ -19,8 +19,8 @@ import { Company } from "@/lib/types";
  */
 
 const CSV_URL = "https://d4bf66bykfyaf.cloudfront.net/corporations-active-cbca-en.csv";
-const CA_COMPANY_LIMIT = 10;
-const RANGE_BYTES = 50_000; // comfortably more than enough rows for CA_COMPANY_LIMIT after filtering
+const CA_COMPANY_LIMIT = 30;
+const RANGE_BYTES = 150_000; // comfortably more than enough rows for CA_COMPANY_LIMIT after filtering
 
 function parseCsvLine(line: string): string[] {
   const fields: string[] = [];

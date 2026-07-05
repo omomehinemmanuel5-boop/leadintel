@@ -1,6 +1,5 @@
-import fs from "fs";
-import path from "path";
 import { Contact } from "@/lib/types";
+import { getSuppressionList } from "@/lib/suppressionStore";
 
 /**
  * GATE — Suppression check
@@ -10,41 +9,20 @@ import { Contact } from "@/lib/types";
  * spam blocklists and out of CASL/CAN-SPAM/GDPR trouble long-term — every
  * unsubscribe or bounce goes in here and stays.
  *
- * Storage: a flat JSON file for the skeleton. Swap for a real DB (e.g.
- * Vercel Postgres / Supabase free tier) before production — this file
- * approach doesn't survive serverless cold starts reliably.
+ * Storage: Vercel Edge Config when EDGE_CONFIG is set (durable across
+ * redeploys), a local JSON file otherwise (dev-only durability). See
+ * src/lib/suppressionStore.ts for the full picture, including the
+ * disclosed tradeoff on how writes are made durable.
  */
 
-const SUPPRESSION_PATH = path.join(process.cwd(), "data", "suppression-list.json");
-
-interface SuppressionEntry {
-  email: string;
-  reason: string;
-  addedAt: string;
-}
-
-function loadSuppressionList(): SuppressionEntry[] {
-  try {
-    const raw = fs.readFileSync(SUPPRESSION_PATH, "utf-8");
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-export function addToSuppressionList(email: string, reason: string) {
-  const list = loadSuppressionList();
-  list.push({ email: email.toLowerCase(), reason, addedAt: new Date().toISOString() });
-  fs.writeFileSync(SUPPRESSION_PATH, JSON.stringify(list, null, 2));
-}
-
-export function runSuppressionGate(contacts: Contact[]): {
+export async function runSuppressionGate(contacts: Contact[]): Promise<{
   contacts: Contact[];
   log: string[];
   blocked: number;
-} {
+}> {
   const log: string[] = [];
-  const suppressed = new Set(loadSuppressionList().map((s) => s.email.toLowerCase()));
+  const list = await getSuppressionList();
+  const suppressed = new Set(list.map((s) => s.email.toLowerCase()));
   let blocked = 0;
 
   const out = contacts.map((contact) => {

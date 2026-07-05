@@ -36,7 +36,7 @@ const SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json";
 // entries — capped here to keep runs comfortably inside Vercel's default
 // serverless function timeout (10s on Hobby), since each company needs a
 // follow-up website lookup.
-const US_COMPANY_LIMIT = 10;
+const US_COMPANY_LIMIT = 25;
 
 interface SecTickerEntry {
   cik_str: number;

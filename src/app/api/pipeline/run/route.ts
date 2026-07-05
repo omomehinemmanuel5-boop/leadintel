@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
   finish("verification", withEmails.length, verified.filter((c) => c.verified).length, 0, log6);
 
   // Gate: suppression check
-  const { contacts: suppressionChecked, log: log7, blocked: blocked7 } = runSuppressionGate(verified);
+  const { contacts: suppressionChecked, log: log7, blocked: blocked7 } = await runSuppressionGate(verified);
   finish("suppression_gate", verified.length, suppressionChecked.length - blocked7, blocked7, log7);
 
   // 6. Outreach queue

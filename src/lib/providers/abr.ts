@@ -17,7 +17,7 @@ import { Company } from "@/lib/types";
  */
 
 const ABR_BASE = "https://abr.business.gov.au/json";
-const AU_COMPANY_LIMIT = 10;
+const AU_COMPANY_LIMIT = 20;
 
 // Rotates through these so repeated runs don't always return the exact
 // same companies. Genuinely just a discovery seed, not a magic list.

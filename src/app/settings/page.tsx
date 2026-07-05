@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PageHeader } from "@/components/ui";
-import { Trash2, Plus, ShieldOff, Database } from "lucide-react";
+import { PageHeader, Badge } from "@/components/ui";
+import { Trash2, Plus, ShieldOff, Database, ShieldCheck } from "lucide-react";
 
 interface SuppressionEntry {
   email: string;
@@ -12,6 +12,7 @@ interface SuppressionEntry {
 
 export default function SettingsPage() {
   const [list, setList] = useState<SuppressionEntry[]>([]);
+  const [durable, setDurable] = useState<boolean | null>(null);
   const [email, setEmail] = useState("");
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(true);
@@ -21,6 +22,7 @@ export default function SettingsPage() {
       .then((r) => r.json())
       .then((d) => {
         setList(d.suppressions);
+        setDurable(d.durable);
         setLoading(false);
       });
   }
@@ -31,11 +33,13 @@ export default function SettingsPage() {
 
   async function addEntry() {
     if (!email.trim()) return;
-    await fetch("/api/suppression", {
+    const res = await fetch("/api/suppression", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, reason: reason || undefined }),
     });
+    const data = await res.json();
+    setDurable(data.durable);
     setEmail("");
     setReason("");
     load();
@@ -52,6 +56,13 @@ export default function SettingsPage() {
         eyebrow="Settings"
         title="Suppression list & limits"
         description="Anyone on this list is blocked from the outreach queue automatically, regardless of consent status."
+        action={
+          durable !== null && (
+            <Badge tone={durable ? "teal" : "amber"}>
+              {durable ? "Durable (Edge Config)" : "Ephemeral (local only)"}
+            </Badge>
+          )
+        }
       />
 
       <div className="glass rounded-2xl p-5 mb-6">
@@ -110,17 +121,48 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {durable ? (
+        <div className="glass rounded-2xl p-5 flex gap-3 mb-4">
+          <div className="w-9 h-9 rounded-lg bg-[var(--teal-dim)] flex items-center justify-center shrink-0">
+            <ShieldCheck size={16} className="text-[var(--teal)]" />
+          </div>
+          <div>
+            <div className="font-semibold text-sm mb-1">This list survives redeploys</div>
+            <p className="text-xs text-[var(--ink-dim)] leading-relaxed">
+              Backed by Vercel Edge Config. Worth knowing: writes go through a broader-scoped API
+              token than ideal for a runtime secret — a disclosed tradeoff made because Edge Config
+              has no write-scoped token option. See <code className="mono">src/lib/suppressionStore.ts</code>{" "}
+              for the full reasoning, and Volume VI for the real long-term fix (Postgres).
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="glass rounded-2xl p-5 flex gap-3 mb-4">
+          <div className="w-9 h-9 rounded-lg bg-[var(--amber-dim)] flex items-center justify-center shrink-0">
+            <Database size={16} className="text-[var(--amber)]" />
+          </div>
+          <div>
+            <div className="font-semibold text-sm mb-1">This list is not durable yet</div>
+            <p className="text-xs text-[var(--ink-dim)] leading-relaxed">
+              Additions here won&apos;t survive a redeploy until Edge Config write credentials are
+              configured (<code className="mono">EDGE_CONFIG_ID</code>,{" "}
+              <code className="mono">EDGE_CONFIG_WRITE_TOKEN</code>).
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="glass rounded-2xl p-5 flex gap-3">
         <div className="w-9 h-9 rounded-lg bg-[var(--amber-dim)] flex items-center justify-center shrink-0">
           <Database size={16} className="text-[var(--amber)]" />
         </div>
         <div>
-          <div className="font-semibold text-sm mb-1">Storage is temporary right now</div>
+          <div className="font-semibold text-sm mb-1">Search jobs still reset on redeploy</div>
           <p className="text-xs text-[var(--ink-dim)] leading-relaxed">
-            Search jobs, companies, and contacts live in server memory — they reset on redeploy or cold
-            start. The suppression list is file-based locally but won&apos;t persist reliably once deployed.
-            Both need a real database (Volume VI: Infrastructure &amp; Deployment) — Vercel Postgres or
-            Supabase&apos;s free tier are both zero-cost places to start when you&apos;re ready.
+            Only the suppression list moved to durable storage so far — it&apos;s small and
+            infrequently written, a good fit for Edge Config&apos;s free-tier limits (100 writes/month).
+            Full job/company/contact history is bigger and updates more often, which needs a real
+            database (Volume VI) rather than Edge Config.
           </p>
         </div>
       </div>
