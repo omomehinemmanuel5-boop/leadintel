@@ -70,6 +70,18 @@ export function getAllContacts(): (Contact & { runId: string; createdAt: string 
   return Array.from(byId.values());
 }
 
+export function getCompanyById(id: string): Company | undefined {
+  return getAllCompanies().find((c) => c.id === id);
+}
+
+export function getContactById(id: string): Contact | undefined {
+  return getAllContacts().find((c) => c.id === id);
+}
+
+export function getContactForCompany(companyId: string): Contact | undefined {
+  return getAllContacts().find((c) => c.companyId === companyId);
+}
+
 export function getAnalytics() {
   const contacts = getAllContacts();
   const companies = getAllCompanies();
