@@ -89,14 +89,24 @@ export async function findLeaderViaApollo(
   company: Company
 ): Promise<Pick<Contact, "name" | "title" | "email" | "emailSource" | "discoverySource"> | null> {
   if (!company.domain) return null;
+
+  // Reserve the budget slot SYNCHRONOUSLY, before any await. This matters
+  // now that discoverNames() runs every company in parallel — without
+  // reserving before the first await, concurrent calls could all pass
+  // this check before any of them increment, blowing well past the
+  // intended cap. JS guarantees no interleaving between synchronous
+  // statements, so check+increment together here is race-safe.
   if (matchesUsedThisRun >= APOLLO_MATCH_LIMIT) return null;
+  matchesUsedThisRun += 1;
 
   const candidates = await searchApolloPeople(company.domain);
   const top = candidates[0];
-  if (!top) return null;
+  if (!top) {
+    matchesUsedThisRun -= 1; // no match call made — refund, this one didn't cost a credit
+    return null;
+  }
 
-  matchesUsedThisRun += 1;
-  const matched = await matchApolloPerson(top.id);
+  const matched = await matchApolloPerson(top.id); // the actual credit-costing call
   if (!matched) return null;
 
   return {

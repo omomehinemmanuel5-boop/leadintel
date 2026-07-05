@@ -47,21 +47,16 @@ function loadSeedLeadership(): Record<string, { name: string; title: string; dis
   return parsed.leadership;
 }
 
-export async function discoverNames(companies: Company[]): Promise<{
-  contacts: Contact[];
-  log: string[];
-}> {
-  const log: string[] = [];
-  const contacts: Contact[] = [];
-  const seedLeadership = loadSeedLeadership();
-  resetApolloRunBudget();
-
-  for (const company of companies) {
-    // 1. Apollo
-    if (hasApollo()) {
-      const found = await findLeaderViaApollo(company);
-      if (found) {
-        contacts.push({
+async function discoverOneCompany(
+  company: Company,
+  seedLeadership: Record<string, { name: string; title: string; discoverySource: string }>
+): Promise<{ contact: Contact | null; log: string }> {
+  // 1. Apollo
+  if (hasApollo()) {
+    const found = await findLeaderViaApollo(company);
+    if (found) {
+      return {
+        contact: {
           id: `${company.id}-lead`,
           companyId: company.id,
           name: found.name,
@@ -72,17 +67,18 @@ export async function discoverNames(companies: Company[]): Promise<{
           email: found.email,
           emailSource: found.emailSource,
           stage: "name_discovery",
-        });
-        log.push(`[${company.name}] found via Apollo.io${found.email ? " (email included)" : " (no email on this match)"}`);
-        continue;
-      }
+        },
+        log: `[${company.name}] found via Apollo.io${found.email ? " (email included)" : " (no email on this match)"}`,
+      };
     }
+  }
 
-    // 2. SEC 10-K Item 401 executive officer table (US, free, no registration)
-    if (company.provider === "sec_edgar") {
-      const found = await findLeaderViaSecOfficerTable(company);
-      if (found) {
-        contacts.push({
+  // 2. SEC 10-K Item 401 executive officer table (US, free, no registration)
+  if (company.provider === "sec_edgar") {
+    const found = await findLeaderViaSecOfficerTable(company);
+    if (found) {
+      return {
+        contact: {
           id: `${company.id}-lead`,
           companyId: company.id,
           name: found.name,
@@ -91,17 +87,18 @@ export async function discoverNames(companies: Company[]): Promise<{
           discoverySource: found.discoverySource,
           provider: "sec_proxy",
           stage: "name_discovery",
-        });
-        log.push(`[${company.name}] found via SEC 10-K officer table (most reliable free source)`);
-        continue;
-      }
+        },
+        log: `[${company.name}] found via SEC 10-K officer table (most reliable free source)`,
+      };
     }
+  }
 
-    // 3. Google
-    if (hasGoogle()) {
-      const found = await findLeaderViaGoogle(company);
-      if (found) {
-        contacts.push({
+  // 3. Google
+  if (hasGoogle()) {
+    const found = await findLeaderViaGoogle(company);
+    if (found) {
+      return {
+        contact: {
           id: `${company.id}-lead`,
           companyId: company.id,
           name: found.name,
@@ -110,16 +107,17 @@ export async function discoverNames(companies: Company[]): Promise<{
           discoverySource: found.discoverySource,
           provider: "google_search",
           stage: "name_discovery",
-        });
-        log.push(`[${company.name}] found via Google Search (heuristic, lower confidence)`);
-        continue;
-      }
+        },
+        log: `[${company.name}] found via Google Search (heuristic, lower confidence)`,
+      };
     }
+  }
 
-    // 4. Demo fallback
-    const seeded = seedLeadership[company.id];
-    if (seeded) {
-      contacts.push({
+  // 4. Demo fallback
+  const seeded = seedLeadership[company.id];
+  if (seeded) {
+    return {
+      contact: {
         id: `${company.id}-lead`,
         companyId: company.id,
         name: seeded.name,
@@ -128,26 +126,46 @@ export async function discoverNames(companies: Company[]): Promise<{
         discoverySource: seeded.discoverySource,
         provider: "demo",
         stage: "name_discovery",
-      });
-      log.push(`[${company.name}] no live provider match — using demo leadership record (${seeded.discoverySource})`);
-      continue;
-    }
-
-    if (company.provider === "demo") {
-      log.push(`[${company.name}] no leader found (demo record has none) — skipped`);
-    } else {
-      const attempted = [
-        hasApollo() && "Apollo",
-        company.provider === "sec_edgar" && "SEC 10-K officer table search",
-        hasGoogle() && "Google",
-      ].filter(Boolean);
-      log.push(
-        attempted.length > 0
-          ? `[${company.name}] ${attempted.join(", ")} found nothing for this company — skipped`
-          : `[${company.name}] real company, no name-discovery provider configured (set APOLLO_API_KEY and/or GOOGLE_API_KEY+GOOGLE_CSE_ID) — skipped`
-      );
-    }
+      },
+      log: `[${company.name}] no live provider match — using demo leadership record (${seeded.discoverySource})`,
+    };
   }
+
+  if (company.provider === "demo") {
+    return { contact: null, log: `[${company.name}] no leader found (demo record has none) — skipped` };
+  }
+
+  const attempted = [
+    hasApollo() && "Apollo",
+    company.provider === "sec_edgar" && "SEC 10-K officer table search",
+    hasGoogle() && "Google",
+  ].filter(Boolean);
+  return {
+    contact: null,
+    log:
+      attempted.length > 0
+        ? `[${company.name}] ${attempted.join(", ")} found nothing for this company — skipped`
+        : `[${company.name}] real company, no name-discovery provider configured (set APOLLO_API_KEY and/or GOOGLE_API_KEY+GOOGLE_CSE_ID) — skipped`,
+  };
+}
+
+export async function discoverNames(companies: Company[]): Promise<{
+  contacts: Contact[];
+  log: string[];
+}> {
+  const seedLeadership = loadSeedLeadership();
+  resetApolloRunBudget();
+
+  // Run every company's discovery attempt in parallel — this used to be
+  // a sequential for-loop, which was fine when each company only needed
+  // one fast lookup, but broke down once the SEC 10-K provider added two
+  // sequential network calls per company. A 25-company US run went
+  // sequential-25x-slow and blew past the function timeout in
+  // production before this fix (confirmed by testing, not theoretical).
+  const results = await Promise.all(companies.map((company) => discoverOneCompany(company, seedLeadership)));
+
+  const contacts = results.map((r) => r.contact).filter((c): c is Contact => c !== null);
+  const log = results.map((r) => r.log);
 
   return { contacts, log };
 }
