@@ -35,8 +35,9 @@ const PLANNED = [
 ];
 
 export default function AIResearchPage() {
-  const [geminiOn, setGeminiOn] = useState<boolean | null>(null);
+  const [aiOn, setAiOn] = useState<boolean | null>(null);
   const [model, setModel] = useState<string | null>(null);
+  const [activeProvider, setActiveProvider] = useState<string | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [summaries, setSummaries] = useState<Record<string, string>>({});
@@ -53,8 +54,9 @@ export default function AIResearchPage() {
       fetch("/api/companies").then((r) => r.json()),
       fetch("/api/contacts").then((r) => r.json()),
     ]).then(([status, c, ct]) => {
-      setGeminiOn(status.gemini);
+      setAiOn(!!status.activeProvider);
       setModel(status.model);
+      setActiveProvider(status.activeProvider);
       setCompanies(c.companies);
       setContacts(ct.contacts);
     });
@@ -102,7 +104,7 @@ export default function AIResearchPage() {
     }
   }
 
-  if (geminiOn === false) {
+  if (aiOn === false) {
     return (
       <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8">
         <PageHeader
@@ -144,10 +146,10 @@ export default function AIResearchPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
       <PageHeader
-        eyebrow={model ? `Powered by ${model}` : "AI Research"}
+        eyebrow={model ? `Powered by ${activeProvider === "groq" ? "Groq" : "Gemini"} · ${model}` : "AI Research"}
         title="AI Research"
         description="Company summaries and outreach drafts, grounded strictly in verified pipeline data — nothing invented."
-        action={<Badge tone="violet">Gemini connected</Badge>}
+        action={<Badge tone="violet">{activeProvider === "groq" ? "Groq" : "Gemini"} connected</Badge>}
       />
 
       {error && (

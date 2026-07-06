@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCompanyById, getContactForCompany } from "@/lib/store";
-import { generateCompanySummary } from "@/lib/providers/gemini";
-import { hasGemini } from "@/lib/providers/geminiConfig";
+import { generateCompanySummary } from "@/lib/providers/ai";
+import { hasAnyAIProvider } from "@/lib/providers/aiConfig";
 import { checkRateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
@@ -10,8 +10,8 @@ export const runtime = "nodejs";
 const BodySchema = z.object({ companyId: z.string().min(1) });
 
 export async function POST(req: NextRequest) {
-  if (!hasGemini()) {
-    return NextResponse.json({ error: "GEMINI_API_KEY not configured" }, { status: 503 });
+  if (!hasAnyAIProvider()) {
+    return NextResponse.json({ error: "No AI provider configured (set GROQ_API_KEY or GEMINI_API_KEY)" }, { status: 503 });
   }
 
   const identity = req.headers.get("x-forwarded-for") ?? "unknown";
@@ -31,10 +31,10 @@ export async function POST(req: NextRequest) {
   }
 
   const contact = getContactForCompany(company.id) ?? null;
-  const summary = await generateCompanySummary(company, contact);
-  if (!summary) {
-    return NextResponse.json({ error: "Gemini request failed" }, { status: 502 });
+  const result = await generateCompanySummary(company, contact);
+  if (!result) {
+    return NextResponse.json({ error: "AI request failed" }, { status: 502 });
   }
 
-  return NextResponse.json({ summary });
+  return NextResponse.json({ summary: result.text, provider: result.provider });
 }

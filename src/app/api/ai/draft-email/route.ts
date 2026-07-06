@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getContactById, getCompanyById } from "@/lib/store";
-import { draftOutreachEmail } from "@/lib/providers/gemini";
-import { hasGemini } from "@/lib/providers/geminiConfig";
+import { draftOutreachEmail } from "@/lib/providers/ai";
+import { hasAnyAIProvider } from "@/lib/providers/aiConfig";
 import { checkRateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
@@ -14,8 +14,8 @@ const BodySchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  if (!hasGemini()) {
-    return NextResponse.json({ error: "GEMINI_API_KEY not configured" }, { status: 503 });
+  if (!hasAnyAIProvider()) {
+    return NextResponse.json({ error: "No AI provider configured (set GROQ_API_KEY or GEMINI_API_KEY)" }, { status: 503 });
   }
 
   const identity = req.headers.get("x-forwarded-for") ?? "unknown";
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   // Don't draft outreach for anyone the pipeline itself has already
   // blocked — the AI layer inherits the same compliance boundary as
-  // everything else, it doesn't get to route around it.
+  // everything else, it doesn't get a side door around the consent gate.
   if (contact.suppressed || contact.consentBasis === "requires_optin" || contact.consentBasis === "blocked") {
     return NextResponse.json(
       { error: "This contact is blocked by the consent or suppression gate — drafting outreach for them isn't allowed." },
@@ -48,13 +48,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const draft = await draftOutreachEmail(company, contact, {
+  const result = await draftOutreachEmail(company, contact, {
     productName: parsed.data.productName,
     valueProposition: parsed.data.valueProposition,
   });
-  if (!draft) {
-    return NextResponse.json({ error: "Gemini request failed" }, { status: 502 });
+  if (!result) {
+    return NextResponse.json({ error: "AI request failed" }, { status: 502 });
   }
 
-  return NextResponse.json({ draft });
+  return NextResponse.json({ draft: result.text, provider: result.provider });
 }
