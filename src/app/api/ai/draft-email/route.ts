@@ -29,11 +29,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const contact = getContactById(parsed.data.contactId);
+  const contact = await getContactById(parsed.data.contactId);
   if (!contact) {
     return NextResponse.json({ error: "Contact not found" }, { status: 404 });
   }
-  const company = getCompanyById(contact.companyId);
+  const company = await getCompanyById(contact.companyId);
   if (!company) {
     return NextResponse.json({ error: "Company not found for this contact" }, { status: 404 });
   }

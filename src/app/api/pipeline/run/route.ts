@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
     label,
   };
 
-  saveRun(run);
+  await saveRun(run);
 
   return NextResponse.json({ run, queue });
 }

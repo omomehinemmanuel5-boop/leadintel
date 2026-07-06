@@ -25,12 +25,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const company = getCompanyById(parsed.data.companyId);
+  const company = await getCompanyById(parsed.data.companyId);
   if (!company) {
     return NextResponse.json({ error: "Company not found" }, { status: 404 });
   }
 
-  const contact = getContactForCompany(company.id) ?? null;
+  const contact = (await getContactForCompany(company.id)) ?? null;
   const result = await generateCompanySummary(company, contact);
   if (!result) {
     return NextResponse.json({ error: "AI request failed" }, { status: 502 });

@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const run = getRun(id);
+  const run = await getRun(id);
   if (!run) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }

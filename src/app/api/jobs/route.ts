@@ -4,7 +4,7 @@ import { listRuns } from "@/lib/store";
 export const runtime = "nodejs";
 
 export async function GET() {
-  const runs = listRuns();
+  const runs = await listRuns();
   // trim logs for the list view — full detail is fetched per-job
   const summaries = runs.map((r) => ({
     id: r.id,

@@ -13,7 +13,7 @@ function csvEscape(value: unknown): string {
 
 export async function GET(req: NextRequest) {
   const includeAll = req.nextUrl.searchParams.get("all") === "true";
-  const contacts = getAllContacts();
+  const contacts = await getAllContacts();
 
   const rows = includeAll
     ? contacts
