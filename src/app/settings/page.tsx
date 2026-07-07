@@ -153,16 +153,16 @@ export default function SettingsPage() {
       )}
 
       <div className="glass rounded-2xl p-5 flex gap-3">
-        <div className="w-9 h-9 rounded-lg bg-[var(--amber-dim)] flex items-center justify-center shrink-0">
-          <Database size={16} className="text-[var(--amber)]" />
+        <div className="w-9 h-9 rounded-lg bg-[var(--teal-dim)] flex items-center justify-center shrink-0">
+          <ShieldCheck size={16} className="text-[var(--teal)]" />
         </div>
         <div>
-          <div className="font-semibold text-sm mb-1">Search jobs still reset on redeploy</div>
+          <div className="font-semibold text-sm mb-1">Search jobs, companies, and contacts also survive redeploys now</div>
           <p className="text-xs text-[var(--ink-dim)] leading-relaxed">
-            Only the suppression list moved to durable storage so far — it&apos;s small and
-            infrequently written, a good fit for Edge Config&apos;s free-tier limits (100 writes/month).
-            Full job/company/contact history is bigger and updates more often, which needs a real
-            database (Volume VI) rather than Edge Config.
+            Backed by Vercel Blob (<code className="mono">src/lib/store.ts</code>) — no third-party
+            database needed for this after all. Different tradeoff than a real relational database:
+            writes are read-modify-write with a small race window under concurrent writers, fine for a
+            single-operator tool. Last 200 runs are kept; older ones are pruned automatically.
           </p>
         </div>
       </div>

@@ -56,9 +56,15 @@ Every company and contact carries a `provider` field (`sec_edgar`, `apollo`, `go
 
 ## Persistence — read this before relying on it
 
-**Suppression list: durable.** Backed by Vercel Edge Config (`src/lib/suppressionStore.ts`), a native Vercel product — provisioned via API with zero dashboard steps. Reads use a token scoped to only this one store (verified by testing that it genuinely can't write or touch anything else — safe to embed as a runtime secret). Writes are a disclosed tradeoff: Edge Config's write API has no scoped-token option, so `EDGE_CONFIG_WRITE_TOKEN` is a full account-level token. That's broader access than ideal for a runtime secret, done anyway for this single-operator tool that's already behind Basic Auth. If that tradeoff doesn't sit right, remove `EDGE_CONFIG_WRITE_TOKEN` — writes cleanly fall back to local-file-only (ephemeral in prod) until Postgres replaces this module.
+Both stores are durable now — no third-party database needed after all. Both are native Vercel products (Edge Config, Blob), not third-party marketplace integrations, so both were provisioned entirely via API with zero dashboard steps.
 
-**Search jobs, companies, contacts: still in-memory.** `src/lib/store.ts` resets on redeploy or cold start. Edge Config isn't a fit here — Vercel's own guidance is against using it for frequently-updated data, and the Hobby tier caps writes at 100/month, which a single afternoon of pipeline runs would blow through. This still needs a real database (Volume VI: Infrastructure & Deployment). Vercel Postgres (via the Storage tab → Neon, one click) and Supabase both have zero-cost tiers — this is the one piece of setup that genuinely can't be done without that dashboard interaction, since installing a marketplace integration requires accepting terms as the account owner.
+**Suppression list** — Vercel Edge Config (`src/lib/suppressionStore.ts`). Reads use a token scoped to only this one store (verified by testing that it genuinely can't write or touch anything else). Writes are a disclosed tradeoff: Edge Config's write API has no scoped-token option, so `EDGE_CONFIG_WRITE_TOKEN` is a full account-level token — broader access than ideal for a runtime secret, accepted anyway for this single-operator tool that's already behind Basic Auth.
+
+**Search jobs, companies, contacts** — Vercel Blob (`src/lib/store.ts`). Kept separate from Edge Config deliberately: Edge Config's 100-writes/month Hobby limit would get exhausted fast by pipeline runs specifically, while Blob's free tier (1GB storage, no restrictive write-count cap) fits this better. The token here (`BLOB_READ_WRITE_TOKEN`) is properly scoped to this one store — a better security posture than the Edge Config write path above.
+
+Worth knowing if you're extending either: the first version of the Blob store used one repeatedly-overwritten URL, and testing directly against the API (not just trusting the docs) caught a real bug — Vercel's CDN caches that URL for up to 30 days regardless of new write headers, and invalidation on overwrite was non-deterministic. Fixed by writing every save to a brand-new timestamped path instead (guaranteed cache miss) and using `list()` to find the latest one, with old snapshots deleted right after each successful write. See the file header comment for the full story if you're debugging something similar.
+
+Both stores share the same known limitation: writes are read-modify-write, which has a small race window under concurrent writers — the last write wins. Fine for a single-operator tool; would need a real transactional database for safe concurrent writes at higher scale.
 
 ## Wiring in real connectors
 
@@ -89,8 +95,8 @@ This section is the honest checklist — what's actually hardened vs. what's the
 - **Reliability.** All DNS/fetch calls in the pipeline are parallelized with 3-4s timeout caps (a sequential version measured 17s+ for a 4-country run; parallelized version measured ~4s) — headroom against Vercel's serverless function timeout.
 - **Client error handling.** Dashboard, Search Jobs, Companies, and Contacts show a real error state with retry instead of hanging on "Loading…" forever if an API call fails.
 
-**Not done — the one real gap:**
-- **Persistence.** Search jobs/companies/contacts are in server memory; the suppression list is a JSON file. Both reset on redeploy/cold start. This needs a real Postgres database, which needs one manual step I can't do headlessly: open the Vercel dashboard → this project → Storage tab → connect a database (Neon's free tier is the zero-cost option, one click). Once that's done, tell me and I'll wire `src/lib/store.ts` and the suppression list over to real queries — the function signatures are already written so that's a swap, not a rewrite.
+**Done since the above was written:**
+- **Persistence.** Both stores are durable via Vercel Blob and Edge Config (native products, provisioned via API — no dashboard step needed after all). See the Persistence section above for the full story, including a real caching bug caught and fixed during testing.
 
 **Not done — deliberately deferred, not urgent:**
 - Real multi-user auth (NextAuth.js) — single shared password is fine until more than one person needs their own login.
