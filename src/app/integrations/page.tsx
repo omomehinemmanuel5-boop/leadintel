@@ -8,6 +8,7 @@ interface Status {
   apollo: boolean;
   google: boolean;
   abr: boolean;
+  serper: boolean;
 }
 
 const CONNECTORS = [
@@ -17,6 +18,7 @@ const CONNECTORS = [
       { name: "SEC EDGAR (US)", status: "live" as const, note: "Free, no key. Real public companies + websites." },
       { name: "Corporations Canada (CA)", status: "live" as const, note: "Free, no key. Bulk CSV from Government of Canada Open Data — 1.5M+ real companies." },
       { name: "Australian Business Register (AU)", status: "abr" as const, note: "Free, but needs a registered GUID (same-day email signup, not a purchase)." },
+      { name: "Serper search (all countries, supplemental)", status: "serper" as const, note: "Company discovery only — no name/email extraction. Real benefit for Germany specifically, since it never touches the restricted Handelsregister." },
       { name: "Germany (DE)", status: "blocked" as const, note: "No legal free live API exists — see note below." },
       { name: "Apollo.io (organization search)", status: "apollo" as const, note: "Not yet wired for company universe — currently used for name+email discovery only." },
     ],
@@ -57,7 +59,7 @@ export default function IntegrationsPage() {
       .then(setStatus);
   }, []);
 
-  function renderStatus(kind: "live" | "demo" | "planned" | "apollo" | "google" | "abr" | "blocked") {
+  function renderStatus(kind: "live" | "demo" | "planned" | "apollo" | "google" | "abr" | "serper" | "blocked") {
     if (kind === "live") return <Badge tone="teal">Live</Badge>;
     if (kind === "demo") return <Badge tone="amber">Demo data</Badge>;
     if (kind === "planned") return <Badge tone="neutral">Planned</Badge>;
@@ -74,6 +76,10 @@ export default function IntegrationsPage() {
       if (!status) return <Badge tone="neutral">Checking…</Badge>;
       return status.abr ? <Badge tone="teal">ABR · configured</Badge> : <Badge tone="neutral">ABR · no GUID set</Badge>;
     }
+    if (kind === "serper") {
+      if (!status) return <Badge tone="neutral">Checking…</Badge>;
+      return status.serper ? <Badge tone="blue">Serper · configured</Badge> : <Badge tone="neutral">Serper · no key set</Badge>;
+    }
     return null;
   }
 
@@ -86,7 +92,7 @@ export default function IntegrationsPage() {
       />
 
       {status && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           <div className="glass rounded-2xl p-4 flex items-center gap-3">
             {status.apollo ? (
               <CheckCircle2 size={18} className="text-[var(--violet)]" />
@@ -123,6 +129,19 @@ export default function IntegrationsPage() {
               <div className="text-sm font-medium">Australian Business Register</div>
               <div className="text-[11px] text-[var(--ink-dim)]">
                 {status.abr ? "GUID configured" : "ABR_GUID not set (free, same-day)"}
+              </div>
+            </div>
+          </div>
+          <div className="glass rounded-2xl p-4 flex items-center gap-3">
+            {status.serper ? (
+              <CheckCircle2 size={18} className="text-[var(--blue)]" />
+            ) : (
+              <XCircle size={18} className="text-[var(--ink-faint)]" />
+            )}
+            <div>
+              <div className="text-sm font-medium">Serper</div>
+              <div className="text-[11px] text-[var(--ink-dim)]">
+                {status.serper ? "API key configured" : "SERPER_API_KEY not set"}
               </div>
             </div>
           </div>

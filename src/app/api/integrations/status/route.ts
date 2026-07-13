@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { hasApollo, hasGoogle, hasAbr } from "@/lib/providers/config";
+import { hasApollo, hasGoogle, hasAbr, hasSerper } from "@/lib/providers/config";
 
 export const runtime = "nodejs";
 
@@ -8,5 +8,6 @@ export async function GET() {
     apollo: hasApollo(),
     google: hasGoogle(),
     abr: hasAbr(),
+    serper: hasSerper(),
   });
 }

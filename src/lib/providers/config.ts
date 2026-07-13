@@ -18,10 +18,15 @@ export function hasAbr(): boolean {
   return !!process.env.ABR_GUID;
 }
 
+export function hasSerper(): boolean {
+  return !!process.env.SERPER_API_KEY;
+}
+
 export const PROVIDER_LABELS: Record<string, string> = {
   sec_edgar: "SEC EDGAR",
   apollo: "Apollo.io",
   google_search: "Google Search",
+  serper: "Serper (Google Search API)",
   abr: "Australian Business Register",
   corporations_canada: "Corporations Canada",
   demo: "Demo data",

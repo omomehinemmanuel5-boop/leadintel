@@ -12,7 +12,7 @@ export type StageId =
 
 export type StageStatus = "idle" | "running" | "done" | "error" | "blocked";
 
-export type Provider = "sec_edgar" | "sec_proxy" | "apollo" | "google_search" | "abr" | "corporations_canada" | "demo" | "manual";
+export type Provider = "sec_edgar" | "sec_proxy" | "apollo" | "google_search" | "serper" | "abr" | "corporations_canada" | "demo" | "manual";
 
 export interface Company {
   id: string;

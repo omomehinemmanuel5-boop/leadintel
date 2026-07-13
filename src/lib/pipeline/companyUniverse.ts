@@ -3,7 +3,8 @@ import path from "path";
 import { Company, Country } from "@/lib/types";
 import { fetchAustraliaCompanies } from "@/lib/providers/abr";
 import { fetchCanadaCompanies } from "@/lib/providers/canada";
-import { hasAbr } from "@/lib/providers/config";
+import { findCompaniesViaSerper } from "@/lib/providers/serper";
+import { hasAbr, hasSerper } from "@/lib/providers/config";
 
 /**
  * STAGE 1 — Company universe
@@ -13,14 +14,27 @@ import { hasAbr } from "@/lib/providers/config";
  *  - Corporations Canada (CA) — fully free, no key at all (bulk CSV)
  *  - Australian Business Register (AU) — free, but needs a registered
  *    ABR_GUID (same-day email registration, not a purchase)
- *  - Germany (DE) — deliberately NOT wired. The Handelsregister has no
- *    official API, imposes a 60 query/hour limit on its portal, and the
- *    register authority has stated that mass automated queries may
- *    constitute a criminal offense under §§303a/303b StGB. The only
- *    legal free option is OffeneRegister.de's static bulk dataset
- *    (2017-2019, stale) — a one-time manual import, not something to
- *    query live. Not building a connector that could look like it's
- *    doing that.
+ *  - Germany (DE) — no registry connector, see below.
+ *
+ * Optional supplement, any country, if SERPER_API_KEY is set:
+ *  - Serper.dev search-based company discovery (src/lib/providers/serper.ts).
+ *    Finds candidate companies via Google Search API, explicitly
+ *    excluding LinkedIn/Facebook/etc. from results. Does NOT extract
+ *    names or guess emails itself — discovered companies flow through
+ *    the exact same name_discovery/consent_gate/suppression_gate chain
+ *    as everything else. This is the main real benefit for Germany
+ *    specifically: the Handelsregister has no legal live API (see
+ *    below), but general web search for German company websites is a
+ *    completely different, unrestricted thing — Serper never touches
+ *    the actual register.
+ *
+ * Germany detail: the Handelsregister has no official API, imposes a 60
+ * query/hour limit on its own portal, and the register authority has
+ * stated that mass automated queries may constitute a criminal offense
+ * under §§303a/303b StGB. The only legal free option is
+ * OffeneRegister.de's static bulk dataset (2017-2019, stale) — a
+ * one-time manual import, not something to query live. Not building a
+ * connector that queries that register directly.
  *
  * This skeleton ships with a demo fallback (data/seed-companies.json)
  * for whatever isn't configured, so the pipeline always runs
@@ -128,10 +142,12 @@ export async function getCompanyUniverse(countries: Country[]): Promise<{
 
   for (const country of countries) {
     const live = await fetchLive(country);
+    const baseCompanies: Company[] = [];
+
     if (live) {
       const providerName = live[0]?.provider ?? "live source";
       log.push(`[${country}] fetched ${live.length} companies from ${providerName} (live)`);
-      results.push(...live);
+      baseCompanies.push(...live);
     } else {
       const { companies } = loadSeed();
       const seeded = companies.filter((c) => c.country === country);
@@ -142,8 +158,22 @@ export async function getCompanyUniverse(countries: Country[]): Promise<{
             ? "no legal free live API exists for Germany, see file header"
             : "no live connector configured";
       log.push(`[${country}] ${reason} — using ${seeded.length} demo companies (data/seed-companies.json)`);
-      results.push(...seeded);
+      baseCompanies.push(...seeded);
     }
+
+    if (hasSerper()) {
+      const serperCompanies = await findCompaniesViaSerper(country);
+      const existingDomains = new Set(baseCompanies.map((c) => c.domain).filter(Boolean));
+      const newOnes = serperCompanies.filter((c) => !c.domain || !existingDomains.has(c.domain));
+      if (newOnes.length > 0) {
+        log.push(`[${country}] +${newOnes.length} companies from Serper search (supplemental, excludes LinkedIn/Facebook/etc.)`);
+        baseCompanies.push(...newOnes);
+      } else if (serperCompanies.length > 0) {
+        log.push(`[${country}] Serper found ${serperCompanies.length} companies, all already covered by the primary source`);
+      }
+    }
+
+    results.push(...baseCompanies);
   }
 
   return { companies: results, log };
