@@ -162,14 +162,18 @@ export async function getCompanyUniverse(countries: Country[]): Promise<{
     }
 
     if (hasSerper()) {
-      const serperCompanies = await findCompaniesViaSerper(country);
-      const existingDomains = new Set(baseCompanies.map((c) => c.domain).filter(Boolean));
-      const newOnes = serperCompanies.filter((c) => !c.domain || !existingDomains.has(c.domain));
-      if (newOnes.length > 0) {
-        log.push(`[${country}] +${newOnes.length} companies from Serper search (supplemental, excludes LinkedIn/Facebook/etc.)`);
-        baseCompanies.push(...newOnes);
-      } else if (serperCompanies.length > 0) {
-        log.push(`[${country}] Serper found ${serperCompanies.length} companies, all already covered by the primary source`);
+      const { companies: serperCompanies, error } = await findCompaniesViaSerper(country);
+      if (error) {
+        log.push(`[${country}] Serper request failed: ${error}`);
+      } else {
+        const existingDomains = new Set(baseCompanies.map((c) => c.domain).filter(Boolean));
+        const newOnes = serperCompanies.filter((c) => !c.domain || !existingDomains.has(c.domain));
+        if (newOnes.length > 0) {
+          log.push(`[${country}] +${newOnes.length} companies from Serper search (supplemental, excludes LinkedIn/Facebook/etc.)`);
+          baseCompanies.push(...newOnes);
+        } else {
+          log.push(`[${country}] Serper found 0 new companies (0 results or all already covered by the primary source)`);
+        }
       }
     }
 

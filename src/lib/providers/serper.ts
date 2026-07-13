@@ -47,6 +47,7 @@ const INDUSTRIES = [
 ];
 
 const COUNTRY_GL: Record<Country, string> = { US: "us", AU: "au", DE: "de", CA: "ca" };
+const COUNTRY_NAME: Record<Country, string> = { US: "United States", AU: "Australia", DE: "Germany", CA: "Canada" };
 
 interface SerperResult {
   title: string;
@@ -62,22 +63,33 @@ function isExcluded(hostname: string): boolean {
   return EXCLUDED_DOMAINS.some((d) => hostname.includes(d));
 }
 
-export async function findCompaniesViaSerper(country: Country): Promise<Company[]> {
+export async function findCompaniesViaSerper(country: Country): Promise<{ companies: Company[]; error?: string }> {
   const apiKey = process.env.SERPER_API_KEY;
-  if (!apiKey) return [];
+  if (!apiKey) return { companies: [] };
 
   const industry = INDUSTRIES[Math.floor(Math.random() * INDUSTRIES.length)];
   const excludeClause = EXCLUDED_DOMAINS.map((d) => `-site:${d}`).join(" ");
-  const query = `"${industry}" company official website ${excludeClause}`;
+  // Country name is in the query text itself, not just the `gl` param —
+  // confirmed by testing that `gl` alone only softly biases ranking and
+  // still surfaces large global players (Ørsted, EDF) regardless of
+  // region. Explicit country text in the query is a much stronger signal.
+  const query = `"${industry}" company official website ${COUNTRY_NAME[country]} ${excludeClause}`;
 
   try {
     const res = await fetch(SERPER_URL, {
       method: "POST",
       headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ q: query, num: SERPER_COMPANY_LIMIT * 2, gl: COUNTRY_GL[country] }),
+      // NOTE: Serper's free tier rejects num > 10 outright ("Query
+      // pattern not allowed for free accounts", HTTP 400) — confirmed
+      // by testing directly against the API. SERPER_COMPANY_LIMIT is
+      // already 10, so request exactly that rather than over-fetching.
+      body: JSON.stringify({ q: query, num: SERPER_COMPANY_LIMIT, gl: COUNTRY_GL[country] }),
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      return { companies: [], error: `Serper returned ${res.status}: ${body.slice(0, 200)}` };
+    }
 
     const data = await res.json();
     const results = (data.organic ?? []) as SerperResult[];
@@ -109,8 +121,8 @@ export async function findCompaniesViaSerper(country: Country): Promise<Company[
       });
     }
 
-    return companies;
-  } catch {
-    return [];
+    return { companies };
+  } catch (e) {
+    return { companies: [], error: e instanceof Error ? e.message : "unknown fetch error" };
   }
 }
