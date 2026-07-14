@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { PageHeader, StatCard, Badge, EmptyState, ErrorBanner } from "@/components/ui";
+import { PageHeader, StatCard, Badge, EmptyState, ErrorBanner, Skeleton, SkeletonStatGrid } from "@/components/ui";
+import ProvenanceRibbon from "@/components/ProvenanceRibbon";
 import { Building2, Users, ShieldCheck, Send, Search, ArrowRight, Plus } from "lucide-react";
 
 interface Analytics {
@@ -14,6 +15,7 @@ interface Analytics {
   queueEligible: number;
   byCountry: Record<string, number>;
   byConsent: Record<string, number>;
+  funnel?: Record<string, number>;
 }
 
 interface JobSummary {
@@ -79,7 +81,19 @@ export default function Dashboard() {
 
       {error && <ErrorBanner message={error} onRetry={load} />}
 
-      {!loading && !error && analytics && analytics.totalRuns === 0 ? (
+      {loading && !error ? (
+        <>
+          <div className="glass rounded-2xl p-5 md:p-6 mb-6">
+            <Skeleton className="h-3 w-48 mb-4" />
+            <div className="flex items-center gap-2">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-10 rounded-full shrink-0" />
+              ))}
+            </div>
+          </div>
+          <SkeletonStatGrid />
+        </>
+      ) : !loading && !error && analytics && analytics.totalRuns === 0 ? (
         <EmptyState
           icon={Search}
           title="No search jobs yet"
@@ -95,6 +109,10 @@ export default function Dashboard() {
         />
       ) : (
         <>
+          <div className="mb-6">
+            <ProvenanceRibbon funnel={analytics?.funnel} />
+          </div>
+
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
             <StatCard
               icon={Building2}

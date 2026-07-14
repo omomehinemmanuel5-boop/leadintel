@@ -130,3 +130,40 @@ export function EmptyState({
     </div>
   );
 }
+
+/** Skeleton loading block — telegraphs shape of incoming content instead
+ *  of a bare "Loading…" string. Use `lines` for stacked text-row skeletons
+ *  or pass explicit className for a custom shape (e.g. a card outline). */
+export function Skeleton({ className = "h-4 w-full" }: { className?: string }) {
+  return <div className={`skeleton ${className}`} />;
+}
+
+export function SkeletonRows({ count = 3 }: { count?: number }) {
+  return (
+    <div className="space-y-2.5">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="glass rounded-xl px-4 py-3.5 flex items-center justify-between gap-3">
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-3.5 w-1/3" />
+            <Skeleton className="h-2.5 w-1/4" />
+          </div>
+          <Skeleton className="h-5 w-16 rounded-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function SkeletonStatGrid({ count = 4 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="glass rounded-2xl p-4">
+          <Skeleton className="h-8 w-8 rounded-lg mb-3" />
+          <Skeleton className="h-6 w-14 mb-2" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+      ))}
+    </div>
+  );
+}

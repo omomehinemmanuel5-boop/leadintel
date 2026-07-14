@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PageHeader, Badge, EmptyState, ErrorBanner } from "@/components/ui";
+import { PageHeader, Badge, EmptyState, ErrorBanner, SkeletonRows } from "@/components/ui";
 import { providerBadge } from "@/lib/providerBadge";
 import { Building2, ExternalLink } from "lucide-react";
 
@@ -59,7 +59,9 @@ export default function CompaniesPage() {
         </div>
       )}
 
-      {!loading && !error && companies.length === 0 ? (
+      {loading && !error ? (
+        <SkeletonRows count={6} />
+      ) : !error && companies.length === 0 ? (
         <EmptyState
           icon={Building2}
           title="No companies yet"

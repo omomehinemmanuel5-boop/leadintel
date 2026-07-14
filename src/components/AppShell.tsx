@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "@/lib/nav";
 import CommandPalette from "@/components/CommandPalette";
+import ProvenanceRibbon from "@/components/ProvenanceRibbon";
 import { Menu, X, Command, Radio } from "lucide-react";
 
 const SECTIONS: { key: "core" | "intelligence" | "system"; label: string }[] = [
@@ -16,6 +17,19 @@ const SECTIONS: { key: "core" | "intelligence" | "system"; label: string }[] = [
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [liveSourceCount, setLiveSourceCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/integrations/status")
+      .then((r) => r.json())
+      .then((d) => {
+        // SEC EDGAR + Corporations Canada are always live, no config
+        // needed — everything else is opt-in and reflected here.
+        const optIn = [d.apollo, d.google, d.abr, d.serper].filter(Boolean).length;
+        setLiveSourceCount(2 + optIn);
+      })
+      .catch(() => setLiveSourceCount(null));
+  }, []);
 
   const activeItem = NAV_ITEMS.find((i) => i.href === pathname);
 
@@ -72,7 +86,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
           <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full glass text-[11px] text-[var(--ink-dim)]">
             <Radio size={11} className="text-[var(--teal)] pulse-dot" />
-            <span className="hidden sm:inline">Demo mode</span>
+            <span className="hidden sm:inline">
+              {liveSourceCount !== null ? `${liveSourceCount} live source${liveSourceCount === 1 ? "" : "s"}` : "Connecting…"}
+            </span>
           </div>
         </header>
 
@@ -123,13 +139,16 @@ function SidebarContent({
                     key={item.href}
                     href={item.href}
                     onClick={onNavigate}
-                    className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors ${
+                    className={`relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-all duration-150 ${
                       active
                         ? "bg-[var(--teal-dim)] text-[var(--teal)] border border-[var(--teal-border)]"
-                        : "text-[var(--ink-dim)] hover:bg-[var(--glass-strong)] hover:text-[var(--ink)] border border-transparent"
+                        : "text-[var(--ink-dim)] hover:bg-[var(--glass-strong)] hover:text-[var(--ink)] hover:translate-x-0.5 border border-transparent"
                     }`}
                   >
-                    <Icon size={16} />
+                    {active && (
+                      <span className="absolute -left-3 top-1/2 -translate-y-1/2 w-1 h-4 rounded-full bg-[var(--teal)]" />
+                    )}
+                    <Icon size={16} className={active ? "" : "opacity-80"} />
                     {item.label}
                   </Link>
                 );
@@ -139,7 +158,10 @@ function SidebarContent({
         ))}
       </nav>
 
-      <div className="p-3 border-t border-[var(--glass-border)]">
+      <div className="p-3 border-t border-[var(--glass-border)] space-y-2.5">
+        <div className="glass rounded-xl px-3 py-3">
+          <ProvenanceRibbon compact />
+        </div>
         <div className="glass rounded-xl px-3 py-2.5 text-[11px] text-[var(--ink-dim)] leading-relaxed">
           Built on free/public sources only.{" "}
           <span className="text-[var(--teal)]">No LinkedIn, no scraping.</span>

@@ -8,13 +8,13 @@
   --surface: #0d1219;
 
   --glass: rgba(255, 255, 255, 0.035);
-  --glass-strong: rgba(255, 255, 255, 0.06);
+  --glass-strong: rgba(255, 255, 255, 0.065);
   --glass-border: rgba(255, 255, 255, 0.09);
-  --glass-border-strong: rgba(255, 255, 255, 0.15);
+  --glass-border-strong: rgba(255, 255, 255, 0.16);
 
-  --ink: #eef1f6;
-  --ink-dim: #8791a3;
-  --ink-faint: #545e70;
+  --ink: #f1f3f7;
+  --ink-dim: #8b95a8;
+  --ink-faint: #525c6e;
 
   --teal: #4fd1c5;
   --teal-dim: rgba(79, 209, 197, 0.14);
@@ -51,9 +51,13 @@ body {
   font-family: 'Inter', 'Space Grotesk', sans-serif;
   position: relative;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Ambient mesh backdrop — signature "Glass Intelligence" atmosphere */
+/* Ambient mesh backdrop — signature "Glass Intelligence" atmosphere.
+   Positions chosen so the glow sits behind the sidebar and topbar, not
+   directly under body copy, keeping long reading areas calm. */
 body::before {
   content: '';
   position: fixed;
@@ -61,10 +65,24 @@ body::before {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 900px 600px at 15% -10%, rgba(79, 209, 197, 0.10), transparent 60%),
-    radial-gradient(ellipse 800px 700px at 90% 10%, rgba(155, 140, 251, 0.08), transparent 55%),
-    radial-gradient(ellipse 700px 500px at 50% 110%, rgba(79, 209, 197, 0.05), transparent 60%);
-  animation: drift 30s ease-in-out infinite alternate;
+    radial-gradient(ellipse 900px 600px at 10% -10%, rgba(79, 209, 197, 0.09), transparent 60%),
+    radial-gradient(ellipse 800px 700px at 95% 5%, rgba(155, 140, 251, 0.07), transparent 55%),
+    radial-gradient(ellipse 600px 500px at 40% 115%, rgba(79, 209, 197, 0.04), transparent 60%);
+  animation: drift 34s ease-in-out infinite alternate;
+}
+
+/* Fine grain overlay — gives the glass panels a tactile, physical
+   quality instead of reading as flat CSS blur. Cheap: one tiny SVG
+   noise pattern, no image asset. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 @keyframes drift {
@@ -74,6 +92,11 @@ body::before {
 
 @media (prefers-reduced-motion: reduce) {
   body::before { animation: none; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .font-display {
@@ -82,14 +105,28 @@ body::before {
 
 .mono {
   font-family: 'IBM Plex Mono', monospace;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Glass panel primitive */
+/* Visible keyboard focus everywhere — glass UIs tend to hide focus
+   rings by accident; this makes sure they don't. */
+:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Glass panel primitive — layered for depth: outer border for shape,
+   inset top highlight to suggest light catching an edge, inset bottom
+   shadow for grounding. Reads as a physical pane, not just a blurred div. */
 .glass {
   background: var(--glass);
   border: 1px solid var(--glass-border);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
 }
 
 .glass-strong {
@@ -97,6 +134,9 @@ body::before {
   border: 1px solid var(--glass-border-strong);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25);
 }
 
 .glass-hover {
@@ -105,6 +145,9 @@ body::before {
 .glass-hover:hover {
   background: var(--glass-strong);
   border-color: var(--glass-border-strong);
+}
+.glass-hover:active {
+  transform: scale(0.98);
 }
 
 ::-webkit-scrollbar {
@@ -139,4 +182,48 @@ body::before {
 }
 .pulse-dot {
   animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* ---------------------------------------------------------------
+   Provenance Ribbon — the signature element. This app's entire
+   differentiator is that every fact carries a checkable origin and
+   passes through real gates before it's trusted. This visualizes that
+   idea directly rather than decorating around it: a persistent chain
+   of checkpoints, not a generic stat card.
+   --------------------------------------------------------------- */
+
+@keyframes ribbon-flow {
+  0% { stroke-dashoffset: 24; }
+  100% { stroke-dashoffset: 0; }
+}
+.ribbon-line {
+  stroke-dasharray: 3 5;
+  animation: ribbon-flow 1.2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ribbon-line { animation: none; }
+}
+
+@keyframes checkpoint-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79, 209, 197, 0.4); }
+  50% { box-shadow: 0 0 0 5px rgba(79, 209, 197, 0); }
+}
+.checkpoint-active {
+  animation: checkpoint-glow 2.2s ease-out infinite;
+}
+
+/* Skeleton loading — replaces plain "Loading…" text with a shape that
+   telegraphs what's arriving, matching the glass surface it sits in. */
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--glass) 25%, var(--glass-strong) 50%, var(--glass) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  border-radius: 8px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; background: var(--glass-strong); }
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PageHeader, Badge, EmptyState, ErrorBanner } from "@/components/ui";
+import { PageHeader, Badge, EmptyState, ErrorBanner, SkeletonRows } from "@/components/ui";
 import { Search, Loader2 } from "lucide-react";
 
 type Country = "AU" | "DE" | "US" | "CA";
@@ -142,7 +142,9 @@ export default function JobsPage() {
         </div>
       )}
 
-      {!loading && !loadError && jobs.length === 0 ? (
+      {loading && !loadError ? (
+        <SkeletonRows count={4} />
+      ) : !loadError && jobs.length === 0 ? (
         <EmptyState icon={Search} title="No jobs yet" description="Run your first job above to see it here." />
       ) : (
         <div className="space-y-2">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { PageHeader, Badge, EmptyState, ErrorBanner } from "@/components/ui";
+import { PageHeader, Badge, EmptyState, ErrorBanner, SkeletonRows } from "@/components/ui";
 import { providerBadge } from "@/lib/providerBadge";
 import { Users, Download } from "lucide-react";
 
@@ -84,7 +84,9 @@ export default function ContactsPage() {
         </div>
       )}
 
-      {!loading && !error && contacts.length === 0 ? (
+      {loading && !error ? (
+        <SkeletonRows count={6} />
+      ) : !error && contacts.length === 0 ? (
         <EmptyState icon={Users} title="No contacts yet" description="Run a search job to populate this view." />
       ) : (
         <>
