@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { PageHeader, Badge, EmptyState, ErrorBanner, SkeletonRows } from "@/components/ui";
 import { providerBadge } from "@/lib/providerBadge";
-import { Building2, ExternalLink } from "lucide-react";
+import { Building2, ExternalLink, Search } from "lucide-react";
 
 interface Company {
   id: string;
@@ -21,6 +21,7 @@ const FLAGS: Record<string, string> = { AU: "🇦🇺", DE: "🇩🇪", US: "�
 export default function CompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [filter, setFilter] = useState<string>("ALL");
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,12 +44,18 @@ export default function CompaniesPage() {
   }, []);
 
   const countries = Array.from(new Set(companies.map((c) => c.country)));
-  const visible = filter === "ALL" ? companies : companies.filter((c) => c.country === filter);
+  const q = search.trim().toLowerCase();
+  const visible = companies.filter((c) => {
+    if (filter !== "ALL" && c.country !== filter) return false;
+    if (q && ![c.name, c.domain ?? "", c.registryId ?? ""].some((f) => f.toLowerCase().includes(q)))
+      return false;
+    return true;
+  });
 
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8">
       <PageHeader
-        eyebrow={`${companies.length} discovered`}
+        eyebrow={loading ? "Companies" : `${companies.length} discovered`}
         title="Companies"
         description="Every company surfaced across your search jobs, deduplicated, with its source registry."
       />
@@ -69,7 +76,19 @@ export default function CompaniesPage() {
         />
       ) : (
         <>
-          <div className="flex flex-wrap gap-2 mb-5">
+          <div className="flex flex-wrap items-center gap-2 mb-5">
+            <div className="relative w-full sm:w-64">
+              <Search
+                size={13}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-faint)] pointer-events-none"
+              />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name, domain, registry ID…"
+                className="w-full bg-[var(--glass-strong)] border border-[var(--glass-border)] rounded-full pl-8 pr-3 py-1.5 text-xs outline-none focus:border-[var(--teal-border)] placeholder:text-[var(--ink-faint)]"
+              />
+            </div>
             <button
               onClick={() => setFilter("ALL")}
               className={`px-3 py-1.5 rounded-full text-xs border ${
@@ -107,6 +126,13 @@ export default function CompaniesPage() {
                 </tr>
               </thead>
               <tbody>
+                {visible.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-8 text-center text-xs text-[var(--ink-faint)]">
+                      No companies match the current filters.
+                    </td>
+                  </tr>
+                )}
                 {visible.map((c) => (
                   <tr key={c.id} className="border-b border-[var(--glass-border)] last:border-0">
                     <td className="px-3 py-2.5 font-medium">{c.name}</td>

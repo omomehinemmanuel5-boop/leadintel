@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PageHeader, Badge, EmptyState, ErrorBanner } from "@/components/ui";
+import { PageHeader, Badge, EmptyState, ErrorBanner, SkeletonRows } from "@/components/ui";
+import { CopyButton } from "@/components/toast";
 import { providerBadge } from "@/lib/providerBadge";
 import { Sparkles, FileText, Target, MessageSquare, Wand2, Loader2, Mail } from "lucide-react";
 
@@ -47,19 +48,33 @@ export default function AIResearchPage() {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [loadingDraft, setLoadingDraft] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [initError, setInitError] = useState<string | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount pattern
+    setInitError(null);
     Promise.all([
-      fetch("/api/ai/status").then((r) => r.json()),
-      fetch("/api/companies").then((r) => r.json()),
-      fetch("/api/contacts").then((r) => r.json()),
-    ]).then(([status, c, ct]) => {
-      setAiOn(!!status.activeProvider);
-      setModel(status.model);
-      setActiveProvider(status.activeProvider);
-      setCompanies(c.companies);
-      setContacts(ct.contacts);
-    });
+      fetch("/api/ai/status").then((r) => {
+        if (!r.ok) throw new Error(`AI status request failed (${r.status})`);
+        return r.json();
+      }),
+      fetch("/api/companies").then((r) => {
+        if (!r.ok) throw new Error(`Failed to load companies (${r.status})`);
+        return r.json();
+      }),
+      fetch("/api/contacts").then((r) => {
+        if (!r.ok) throw new Error(`Failed to load contacts (${r.status})`);
+        return r.json();
+      }),
+    ])
+      .then(([status, c, ct]) => {
+        setAiOn(!!status.activeProvider);
+        setModel(status.model);
+        setActiveProvider(status.activeProvider);
+        setCompanies(c.companies);
+        setContacts(ct.contacts);
+      })
+      .catch((e) => setInitError(e instanceof Error ? e.message : "Failed to load AI Research data."));
   }, []);
 
   async function generateSummary(companyId: string) {
@@ -104,13 +119,35 @@ export default function AIResearchPage() {
     }
   }
 
+  if (initError) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
+        <PageHeader eyebrow="Volume V · AI Systems" title="AI Research" />
+        <ErrorBanner message={initError} onRetry={() => window.location.reload()} />
+      </div>
+    );
+  }
+
+  if (aiOn === null) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
+        <PageHeader
+          eyebrow="Volume V · AI Systems"
+          title="AI Research"
+          description="Checking AI provider status…"
+        />
+        <SkeletonRows count={4} />
+      </div>
+    );
+  }
+
   if (aiOn === false) {
     return (
       <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8">
         <PageHeader
           eyebrow="Volume V · AI Systems"
           title="AI Research"
-          description="Not configured yet — set GEMINI_API_KEY to activate company summaries and outreach drafting."
+          description="Not configured yet — set GROQ_API_KEY or GEMINI_API_KEY to activate company summaries and outreach drafting."
         />
         <div className="glass rounded-2xl p-6 mb-6 flex items-start gap-4">
           <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[var(--teal-dim)] to-[var(--violet-dim)] flex items-center justify-center shrink-0">
@@ -219,8 +256,16 @@ export default function AIResearchPage() {
                 {contact?.email && !blocked && (
                   <div className="mt-3 pt-3 border-t border-[var(--glass-border)]">
                     {draft[contact.id] ? (
-                      <div className="text-sm bg-[var(--glass-strong)] rounded-lg p-3 whitespace-pre-wrap leading-relaxed">
-                        {draft[contact.id]}
+                      <div className="text-sm bg-[var(--glass-strong)] rounded-lg p-3 leading-relaxed">
+                        <div className="whitespace-pre-wrap">{draft[contact.id]}</div>
+                        <div className="mt-2 pt-2 border-t border-[var(--glass-border)] flex justify-end">
+                          <CopyButton
+                            text={draft[contact.id]}
+                            label="Copy draft"
+                            showLabel
+                            copiedMessage="Draft copied — paste it into your email client"
+                          />
+                        </div>
                       </div>
                     ) : (
                       <button
