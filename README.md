@@ -18,7 +18,7 @@ This is the **Foundation + UI** phase of the roadmap in `docs/PROJECT_VISION.md`
 | Integrations | `/integrations` | Connector status: live / demo / planned / bring-your-own-key |
 | Settings | `/settings` | Suppression list management, storage caveats |
 
-Visual language: dark-first "Glass Intelligence" (translucent panels, ambient gradient mesh, command palette via ⌘K) per the handbook's UX section.
+Visual language: dark-first "Glass Intelligence" (translucent panels, ambient gradient mesh, command palette via ⌘K with full arrow-key/Enter navigation) per the handbook's UX section. Tables support instant text search on top of the country filters; emails and AI drafts have one-click copy with toast confirmation — the "take this into my email client" step is a click, not a drag-select.
 
 ## Why it's built this way
 
@@ -93,7 +93,9 @@ This section is the honest checklist — what's actually hardened vs. what's the
 - **Tests.** `npm run test` (Vitest) covers the consent gate's per-jurisdiction logic and the outreach queue's eligibility rules — the two places a bug would mean contacting someone who shouldn't be contacted. Run in CI on every push.
 - **CI.** `.github/workflows/ci.yml` runs lint, test, and build on every push/PR to `main`.
 - **Reliability.** All DNS/fetch calls in the pipeline are parallelized with 3-4s timeout caps (a sequential version measured 17s+ for a 4-country run; parallelized version measured ~4s) — headroom against Vercel's serverless function timeout.
-- **Client error handling.** Dashboard, Search Jobs, Companies, and Contacts show a real error state with retry instead of hanging on "Loading…" forever if an API call fails.
+- **Client error handling.** Dashboard, Search Jobs, Companies, Contacts, and AI Research show a real error state with retry instead of hanging on "Loading…" forever if an API call fails.
+- **Error boundaries and 404.** Styled `error.tsx` / `global-error.tsx` / `not-found.tsx` — a crash in one view or a stale job link shows a recoverable in-app screen, not Next's unstyled default.
+- **Robots policy.** `robots: noindex` is set app-wide — this is a single-operator tool behind Basic Auth and should never appear in a search index even if the auth env vars are misconfigured.
 
 **Done since the above was written:**
 - **Persistence.** Both stores are durable via Vercel Blob and Edge Config (native products, provisioned via API — no dashboard step needed after all). See the Persistence section above for the full story, including a real caching bug caught and fixed during testing.

@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader, Badge, EmptyState, ErrorBanner, SkeletonRows } from "@/components/ui";
+import { CopyButton } from "@/components/toast";
 import { providerBadge } from "@/lib/providerBadge";
-import { Users, Download } from "lucide-react";
+import { Users, Download, Search } from "lucide-react";
 
 interface Contact {
   id: string;
@@ -25,6 +26,7 @@ const FLAGS: Record<string, string> = { AU: "🇦🇺", DE: "🇩🇪", US: "�
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [country, setCountry] = useState("ALL");
+  const [search, setSearch] = useState("");
   const [onlyEligible, setOnlyEligible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +52,7 @@ export default function ContactsPage() {
   const countries = Array.from(new Set(contacts.map((c) => c.country)));
 
   const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return contacts.filter((c) => {
       if (country !== "ALL" && c.country !== country) return false;
       if (onlyEligible) {
@@ -57,14 +60,15 @@ export default function ContactsPage() {
           c.email && c.verified && !c.suppressed && c.consentBasis !== "requires_optin" && c.consentBasis !== "blocked";
         if (!eligible) return false;
       }
+      if (q && ![c.name, c.title, c.email ?? ""].some((f) => f.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [contacts, country, onlyEligible]);
+  }, [contacts, country, search, onlyEligible]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8">
       <PageHeader
-        eyebrow={`${contacts.length} found`}
+        eyebrow={loading ? "Contacts" : `${contacts.length} found`}
         title="Contacts"
         description="Every leader discovered, with the consent basis and verification status that decides whether they can be contacted."
         action={
@@ -91,6 +95,18 @@ export default function ContactsPage() {
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2 mb-5">
+            <div className="relative w-full sm:w-64">
+              <Search
+                size={13}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-faint)] pointer-events-none"
+              />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name, title, email…"
+                className="w-full bg-[var(--glass-strong)] border border-[var(--glass-border)] rounded-full pl-8 pr-3 py-1.5 text-xs outline-none focus:border-[var(--teal-border)] placeholder:text-[var(--ink-faint)]"
+              />
+            </div>
             <button
               onClick={() => setCountry("ALL")}
               className={`px-3 py-1.5 rounded-full text-xs border ${
@@ -139,6 +155,13 @@ export default function ContactsPage() {
                 </tr>
               </thead>
               <tbody>
+                {visible.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-3 py-8 text-center text-xs text-[var(--ink-faint)]">
+                      No contacts match the current filters.
+                    </td>
+                  </tr>
+                )}
                 {visible.map((c) => (
                   <tr key={c.id} className="border-b border-[var(--glass-border)] last:border-0">
                     <td className="px-3 py-2.5">
@@ -150,7 +173,14 @@ export default function ContactsPage() {
                       <Badge tone={providerBadge(c.provider).tone}>{providerBadge(c.provider).label}</Badge>
                     </td>
                     <td className="px-3 py-2.5 mono text-[11.5px]">
-                      {c.email ?? "—"}
+                      {c.email ? (
+                        <span className="inline-flex items-center gap-0.5">
+                          {c.email}
+                          <CopyButton text={c.email} label="Copy email" copiedMessage={`Copied ${c.email}`} />
+                        </span>
+                      ) : (
+                        "—"
+                      )}
                       {c.emailConfidence !== undefined && (
                         <div className="text-[10px] text-[var(--ink-faint)]">
                           {Math.round(c.emailConfidence * 100)}% pattern confidence
